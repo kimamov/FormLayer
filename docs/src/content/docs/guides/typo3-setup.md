@@ -11,9 +11,13 @@ The TYPO3 integration layer wraps the generic FormLayer library with TYPO3-speci
 
 ```typescript
 import { initTypo3Forms } from 'formlayer/typo3';
+import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
+import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
 import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
 import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
 
+registerComboboxPlugin();
+registerClientVariantsPlugin();
 registerDatepickerPlugin();
 registerTypo3AltchaPlugin();
 
@@ -29,13 +33,12 @@ See [TYPO3 Backend (PHP)](/guides/typo3-backend/) for middleware, templates, and
 ## What initTypo3Forms Does
 
 1. Registers all 12 built-in validators
-2. Registers combobox and client-variants plugins (built into core)
-3. Creates an AJAX submit handler (`createTypo3Submit`) that sends `X-Form-Ajax: 1`
-4. Provides `remount` and `unmount` for multistep form lifecycle
-5. Scans for `form[id]` elements and initializes each one
-6. Returns a `Typo3FormsApi` object for cleanup
+2. Creates an AJAX submit handler (`createTypo3Submit`) that sends `X-Form-Ajax: 1`
+3. Provides `remount` and `unmount` for multistep form lifecycle
+4. Scans for `form[id]` elements and initializes each one
+5. Returns a `Typo3FormsApi` object for cleanup
 
-Optional plugins (datepicker, altcha) are separate npm packages — register them **before** calling `initTypo3Forms()`. See [Plugins](/guides/plugins/).
+Plugins (combobox, client-variants, datepicker, altcha) are separate npm packages — register them **before** calling `initTypo3Forms()`. See [Plugins](/guides/plugins/).
 
 ## Configuration Options
 

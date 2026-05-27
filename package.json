@@ -37,14 +37,6 @@
       "types": "./dist/forms/validators/index.d.ts",
       "import": "./dist/forms/validators/index.js"
     },
-    "./plugins/combobox": {
-      "types": "./dist/forms/plugins/combobox.d.ts",
-      "import": "./dist/forms/plugins/combobox.js"
-    },
-    "./plugins/client-variants": {
-      "types": "./dist/forms/plugins/client-variants/index.d.ts",
-      "import": "./dist/forms/plugins/client-variants/index.js"
-    },
     "./forms.css": "./src/forms/forms.css"
   },
   "files": [
@@ -55,7 +47,7 @@
   ],
   "scripts": {
     "build": "vite build && node scripts/postbuild.mjs",
-    "build:plugins": "npm run build -w @formlayer/plugin-datepicker && npm run build -w @formlayer/plugin-altcha",
+    "build:plugins": "npm run build -w @formlayer/plugin-combobox && npm run build -w @formlayer/plugin-client-variants && npm run build -w @formlayer/plugin-datepicker && npm run build -w @formlayer/plugin-altcha",
     "build:all": "npm run build && npm run build:plugins",
     "prepublishOnly": "npm run build:all && npm test",
     "test": "vitest run",

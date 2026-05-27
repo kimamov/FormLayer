@@ -26,9 +26,6 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
     formRegistry.registerValidator(v);
   }
 
-  registerPlugin('combobox', () => import('../forms/plugins/combobox'));
-  formRegistry.registerFormPlugin(() => import('../forms/plugins/client-variants/client-variants-plugin'));
-
   for (const [type, factory] of Object.entries(options?.additionalFieldPlugins ?? {})) {
     registerPlugin(type, factory);
   }

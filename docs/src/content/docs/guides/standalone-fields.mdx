@@ -41,7 +41,7 @@ Pass a `plugin` in the options — by registry key, class, or instance:
 const comboCtrl = initField(mySelect, { plugin: 'combobox' });
 
 // By class (instant)
-import ComboboxPlugin from './plugins/combobox';
+import { ComboboxPlugin } from '@formlayer/plugin-combobox';
 const comboCtrl2 = initField(mySelect, { plugin: ComboboxPlugin });
 
 // By instance (pre-configured)

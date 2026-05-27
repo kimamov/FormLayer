@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateExpression } from '../src/forms/plugins/client-variants/expression-parser';
+import { evaluateExpression } from '../packages/plugin-client-variants/src/expression-parser';
 
 const resolver = (values: Record<string, string>) => (name: string) => values[name] ?? '';
 

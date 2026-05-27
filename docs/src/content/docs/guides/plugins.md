@@ -11,6 +11,18 @@ A field plugin is activated by the `data-field-type` attribute on the field wrap
 
 ### Combobox
 
+Requires [`@formlayer/plugin-combobox`](https://www.npmjs.com/package/@formlayer/plugin-combobox):
+
+```bash
+npm install @formlayer/plugin-combobox
+```
+
+```typescript
+import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
+
+registerComboboxPlugin();
+```
+
 Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission.
 
 ```html
@@ -70,7 +82,19 @@ Form plugins operate on the entire form. They receive the `FormPluginHost` API f
 
 ### Client Variants
 
-The built-in `ClientVariantsPlugin` enables/disables fields based on conditions evaluated against other field values — replicating TYPO3's server-side variant logic on the client.
+Requires [`@formlayer/plugin-client-variants`](https://www.npmjs.com/package/@formlayer/plugin-client-variants):
+
+```bash
+npm install @formlayer/plugin-client-variants
+```
+
+```typescript
+import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
+
+registerClientVariantsPlugin();
+```
+
+The `ClientVariantsPlugin` enables/disables fields based on conditions evaluated against other field values — replicating TYPO3's server-side variant logic on the client.
 
 ```html
 <form id="registration">
@@ -122,13 +146,17 @@ registerPlugin('my-slider', () => import('./plugins/slider'));
 formRegistry.registerFormPlugin(() => import('./plugins/my-form-plugin'));
 ```
 
-With TYPO3, combobox and client-variants are registered automatically. Install optional plugins separately and register them before `initTypo3Forms()`:
+With TYPO3, install and register plugins **before** calling `initTypo3Forms()`:
 
 ```typescript
 import { initTypo3Forms } from 'formlayer/typo3';
+import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
+import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
 import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
 import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
 
+registerComboboxPlugin();
+registerClientVariantsPlugin();
 registerDatepickerPlugin();
 registerTypo3AltchaPlugin();
 
