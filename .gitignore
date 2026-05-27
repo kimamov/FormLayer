@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Docs site artifacts
+docs/node_modules/
+docs/dist/
+docs/.astro/
+docs/public/formlayer/
+
+# IDE / OS
+.DS_Store
+*.log
+
+# Test coverage
+coverage/

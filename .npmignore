@@ -1,0 +1,9 @@
+tests/
+docs/
+scripts/
+src/
+vite.config.ts
+vitest.config.ts
+tsconfig.json
+tsconfig.build.json
+.gitignore

@@ -1,0 +1,40 @@
+{
+  "name": "@formlayer/plugin-altcha",
+  "version": "0.1.0",
+  "description": "ALTCHA captcha field plugins for FormLayer",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./typo3": {
+      "types": "./dist/typo3.d.ts",
+      "import": "./dist/typo3.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "altcha": "^3.0.9"
+  },
+  "peerDependencies": {
+    "formlayer": "^0.1.0"
+  },
+  "devDependencies": {
+    "formlayer": "file:../..",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "name": "formlayer",
+  "version": "0.1.0",
+  "description": "Type-safe progressive enhancement for server-rendered HTML forms",
+  "type": "module",
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/formlayer.git"
+  },
+  "homepage": "https://github.com/your-org/formlayer#readme",
+  "bugs": {
+    "url": "https://github.com/your-org/formlayer/issues"
+  },
+  "keywords": [
+    "forms",
+    "validation",
+    "progressive-enhancement",
+    "typescript",
+    "html-forms",
+    "typo3"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./typo3": {
+      "types": "./dist/typo3/index.d.ts",
+      "import": "./dist/typo3/index.js"
+    },
+    "./validators": {
+      "types": "./dist/forms/validators/index.d.ts",
+      "import": "./dist/forms/validators/index.js"
+    },
+    "./plugins/combobox": {
+      "types": "./dist/forms/plugins/combobox.d.ts",
+      "import": "./dist/forms/plugins/combobox.js"
+    },
+    "./plugins/client-variants": {
+      "types": "./dist/forms/plugins/client-variants/index.d.ts",
+      "import": "./dist/forms/plugins/client-variants/index.js"
+    },
+    "./forms.css": "./src/forms/forms.css"
+  },
+  "files": [
+    "dist",
+    "src/forms/forms.css",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "vite build && node scripts/postbuild.mjs",
+    "build:plugins": "npm run build -w @formlayer/plugin-datepicker && npm run build -w @formlayer/plugin-altcha",
+    "build:all": "npm run build && npm run build:plugins",
+    "prepublishOnly": "npm run build:all && npm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs:dev": "npm run build:all && cd docs && npm run dev",
+    "docs:build": "npm run build:all && cd docs && npm run build"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "jsdom": "^27.0.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

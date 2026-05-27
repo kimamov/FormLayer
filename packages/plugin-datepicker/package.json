@@ -1,0 +1,36 @@
+{
+  "name": "@formlayer/plugin-datepicker",
+  "version": "0.1.0",
+  "description": "Air Datepicker field plugin for FormLayer",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "air-datepicker": "^3.6.0"
+  },
+  "peerDependencies": {
+    "formlayer": "^0.1.0"
+  },
+  "devDependencies": {
+    "formlayer": "file:../..",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.10",
+    "vite-plugin-dts": "^4.5.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

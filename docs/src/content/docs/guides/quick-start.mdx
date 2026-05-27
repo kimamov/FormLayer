@@ -1,0 +1,118 @@
+---
+title: Quick Start
+description: Set up your first FormLayer-enhanced form in minutes.
+---
+
+import FormPreview from '../../../components/FormPreview.astro';
+
+## HTML Structure
+
+Every FormLayer field needs a wrapper element with `data-form-field` and an input inside it. Optionally add `data-validate` for validation rules and an error container.
+
+```html
+<form id="contact" action="/api/contact" method="post">
+  <div data-form-field="name"
+       data-validate='[{"type":"NotEmpty","options":{"message":"Please enter your name"}}]'>
+    <label for="name">Name</label>
+    <input id="name" type="text" name="name" />
+    <div id="name-errors" class="invalid-feedback"></div>
+  </div>
+
+  <div data-form-field="email"
+       data-validate='[
+         {"type":"NotEmpty","options":{"message":"Email is required"}},
+         {"type":"EmailAddress","options":{"message":"Please enter a valid email"}}
+       ]'>
+    <label for="email">Email</label>
+    <input id="email" type="email" name="email" />
+    <div id="email-errors" class="invalid-feedback"></div>
+  </div>
+
+  <div data-form-field="message"
+       data-validate='[
+         {"type":"NotEmpty","options":{"message":"Please enter a message"}},
+         {"type":"StringLength","options":{"minimum":10,"message":"Message must be at least 10 characters"}}
+       ]'>
+    <label for="message">Message</label>
+    <textarea id="message" name="message"></textarea>
+    <div id="message-errors" class="invalid-feedback"></div>
+  </div>
+
+  <button type="submit">Send Message</button>
+</form>
+```
+
+<FormPreview src="/demos/contact-form.html" height="480px" title="Contact form with validation" />
+
+## JavaScript Setup (Generic)
+
+```typescript
+import { formRegistry, registerDefaultValidators } from 'formlayer';
+
+registerDefaultValidators();
+
+formRegistry.init(async (ctx) => {
+  const response = await fetch(ctx.formEl.action, {
+    method: 'POST',
+    body: ctx.formData,
+  });
+
+  if (!response.ok) {
+    ctx.fallbackToNative();
+    return;
+  }
+
+  const data = await response.json();
+
+  if (data.errors) {
+    ctx.applyValidationErrors(data.errors);
+    return;
+  }
+
+  ctx.finish('<p>Thank you for your message!</p>');
+});
+```
+
+## JavaScript Setup (TYPO3)
+
+If you're using TYPO3, a single call handles everything:
+
+```typescript
+import { initTypo3Forms } from 'formlayer/typo3';
+import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
+import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+
+registerDatepickerPlugin();
+registerTypo3AltchaPlugin();
+initTypo3Forms();
+```
+
+This registers all validators, sets up combobox and client-variants plugins, and initializes AJAX form submission. Install `@formlayer/plugin-datepicker` and `@formlayer/plugin-altcha` when your forms use those field types.
+
+## How Validation Works
+
+1. User interacts with a field (blur or change triggers validation)
+2. FormLayer reads the `data-validate` JSON array from the field wrapper
+3. Each rule is run through the matching registered validator
+4. Failed rules produce error messages displayed in the error container
+5. The field and its wrapper get the `is-invalid` CSS class
+6. The input gets `aria-invalid="true"` for accessibility
+
+On form submit, all fields are validated. If any fail, the first invalid field is focused.
+
+## CSS Classes
+
+FormLayer uses these CSS classes by default:
+
+| Class | Applied to | When |
+|-------|-----------|------|
+| `is-invalid` | Input element + field wrapper | Field has validation errors |
+| `invalid-feedback` | Error container | Expected class for the error element |
+
+## Error Element Resolution
+
+FormLayer finds the error container for each field using this priority:
+
+1. An element with `id="{input-id}-errors"` anywhere in the document
+2. For radio/checkbox groups: an element with `id="{group-id}-errors"`
+3. A child element with class `invalid-feedback` inside the field wrapper
