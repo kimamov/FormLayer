@@ -223,16 +223,8 @@ const ctrl = initField(document.getElementById('confirm-password')!, {
 });
 ```
 
-## Custom Error Rendering
+## Error Rendering
 
-Replace the default error display with your own:
+Validation produces error **messages**; FormLayer renders them into the DOM separately. By default, messages are escaped and joined with `<br/>` inside `#input-id-errors` or `.invalid-feedback`.
 
-```typescript
-const ctrl = initField(myElement, {
-  renderErrors(errors, fieldCtrl) {
-    const container = fieldCtrl.element.querySelector('.my-errors');
-    if (!container) return;
-    container.innerHTML = errors.map(e => `<span class="error-tag">${e}</span>`).join('');
-  },
-});
-```
+To change the container location, add icons, or customize markup, see [Error Rendering](/guides/error-rendering/).

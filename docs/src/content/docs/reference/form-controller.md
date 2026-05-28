@@ -12,8 +12,12 @@ Pass options as the third argument to `formRegistry.register()` or `formRegistry
 ```typescript
 interface FormControllerOptions {
   fieldSelector?: string;
+  /** Options applied to every field controller in this form. */
+  fieldOptions?: FieldControllerOptions;
   loadingState?: false | FormLoadingStateOptions;
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
+  /** Called when the form fails validation (client- or server-side). Complements form:invalid. */
+  onFormInvalid?: (detail: FormEventDetail) => void;
 }
 
 interface FormLoadingStateOptions {
@@ -22,7 +26,7 @@ interface FormLoadingStateOptions {
 }
 ```
 
-See [Loading State](/guides/loading-state/) for usage examples.
+See [Loading State](/guides/loading-state/) for loading UI examples and [Error Rendering](/guides/error-rendering/) for field and form error display.
 
 ## Properties
 

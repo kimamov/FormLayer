@@ -73,13 +73,13 @@ const ctrl = initField(myElement, {
     return errors.map(e => `Server: ${e}`);
   },
 
-  renderErrors(errors, fieldCtrl) {
-    const toast = document.getElementById('toast')!;
-    toast.textContent = errors.join('; ');
-    toast.hidden = errors.length === 0;
-  },
+  errorsSelector: '[data-field-error]',
+  renderError: ({ message }) => `<span class="field-error">${message}</span>`,
+  errorsSeparator: '',
 });
 ```
+
+For icons, custom container placement, form-level summaries, and the full option reference, see [Error Rendering](/guides/error-rendering/).
 
 ## Programmatic Control
 

@@ -6,9 +6,24 @@ const NATIVE_CONSTRAINT_ATTRS = [
   'required', 'pattern', 'minlength', 'maxlength', 'min', 'max', 'step',
 ] as const;
 
+export interface FieldErrorRenderContext {
+  message: string;
+  index: number;
+  errors: string[];
+}
+
 export interface FieldControllerOptions {
   validate?: (value: string, rules: ValidatorRule[], defaultValidate: () => FieldValidationResult) => FieldValidationResult;
   onServerErrors?: (errors: string[], fieldName: string) => string[];
+  /** CSS selector scoped to the field wrapper. Used after id-based lookups, before the default class fallback. */
+  errorsSelector?: string;
+  /** Resolve the errors container. Takes precedence over errorsSelector and built-in lookups. */
+  findErrorsElement?: (field: FieldController) => HTMLElement | null;
+  /** Render a single error message as HTML. Used by default rendering; ignored when renderErrors is set. */
+  renderError?: (ctx: FieldErrorRenderContext, field: FieldController) => string;
+  /** Join rendered error fragments. Default: `<br/>`. Ignored when renderErrors is set. */
+  errorsSeparator?: string;
+  /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
   renderErrors?: (errors: string[], ctx: FieldController) => void;
 }
 
@@ -365,6 +380,10 @@ export class FieldController implements FieldPluginHost {
   }
 
   private findErrorsElement(): HTMLElement | null {
+    if (this.options.findErrorsElement) {
+      return this.options.findErrorsElement(this);
+    }
+
     const uniqueId = this.input.id;
     if (uniqueId) {
       const el = document.getElementById(`${uniqueId}-errors`);
@@ -374,6 +393,11 @@ export class FieldController implements FieldPluginHost {
     const groupContainer = this.wrapper.querySelector('[role="radiogroup"], [role="group"]');
     if (groupContainer?.id) {
       const el = document.getElementById(`${groupContainer.id}-errors`);
+      if (el) return el;
+    }
+
+    if (this.options.errorsSelector) {
+      const el = this.wrapper.querySelector<HTMLElement>(this.options.errorsSelector);
       if (el) return el;
     }
 
@@ -396,13 +420,18 @@ export class FieldController implements FieldPluginHost {
     if (this.options.renderErrors) {
       this.options.renderErrors(errors, this);
     } else if (this.errorsEl) {
+      const separator = this.options.errorsSeparator ?? '<br/>';
       this.errorsEl.innerHTML = errors
-        .map((msg) => this.escapeHtml(msg))
-        .join('<br/>');
+        .map((msg, index) => {
+          if (this.options.renderError) {
+            return this.options.renderError({ message: msg, index, errors }, this);
+          }
+          return this.escapeHtml(msg);
+        })
+        .join(separator);
     }
   }
 
-  
 
   private addErrorsToDescribedBy(): void {
     if (!this.errorsEl?.id) return;

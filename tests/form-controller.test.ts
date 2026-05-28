@@ -302,6 +302,51 @@ describe('FormController', () => {
       expect(handler).toHaveBeenCalledOnce();
     });
 
+    it('calls onFormInvalid when validation fails', async () => {
+      const form = createRegistrationForm();
+      const onFormInvalid = vi.fn();
+      const ctrl = new FormController(form, noopSubmit, { onFormInvalid });
+
+      await ctrl.validate();
+
+      expect(onFormInvalid).toHaveBeenCalledOnce();
+      expect(onFormInvalid.mock.calls[0][0]).toMatchObject({
+        formId: 'registration',
+        state: expect.objectContaining({ isValid: false }),
+      });
+    });
+
+    it('does not call onFormInvalid when validation passes', async () => {
+      const form = createRegistrationForm();
+      const onFormInvalid = vi.fn();
+      const ctrl = new FormController(form, noopSubmit, { onFormInvalid });
+
+      (document.getElementById('firstName') as HTMLInputElement).value = 'John';
+      (document.getElementById('lastName') as HTMLInputElement).value = 'Doe';
+      (document.getElementById('email') as HTMLInputElement).value = 'j@test.com';
+      (document.getElementById('age') as HTMLInputElement).value = '25';
+      (document.getElementById('country') as HTMLSelectElement).value = 'de';
+      (document.getElementById('terms') as HTMLInputElement).checked = true;
+
+      await ctrl.validate();
+
+      expect(onFormInvalid).not.toHaveBeenCalled();
+    });
+
+    it('passes fieldOptions to every field controller', async () => {
+      const form = createRegistrationForm();
+      const renderError = vi.fn(({ message }: { message: string }) => `<em>${message}</em>`);
+      const ctrl = new FormController(form, noopSubmit, {
+        fieldOptions: { renderError, errorsSeparator: '' },
+      });
+
+      await ctrl.validate();
+
+      expect(renderError).toHaveBeenCalled();
+      const firstNameErrors = document.getElementById('firstName-errors')!;
+      expect(firstNameErrors.innerHTML).toContain('<em>This field is required.</em>');
+    });
+
     it('emits field:change on individual field changes', () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
