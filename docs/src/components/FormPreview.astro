@@ -6,6 +6,7 @@ interface Props {
 }
 
 const { src, height = '400px', title = 'Live preview' } = Astro.props;
+const iframeSrc = `${import.meta.env.BASE_URL}${src.replace(/^\//, '')}`;
 ---
 
 <div class="form-preview">
@@ -13,7 +14,7 @@ const { src, height = '400px', title = 'Live preview' } = Astro.props;
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
     <span>Live Preview</span>
   </div>
-  <iframe src={src} style={`height: ${height};`} title={title} loading="lazy"></iframe>
+  <iframe src={iframeSrc} style={`height: ${height};`} title={title} loading="lazy"></iframe>
 </div>
 
 <style>

@@ -7,11 +7,11 @@
   "author": "",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/formlayer.git"
+    "url": "https://github.com/kimamov/FormLayer.git"
   },
-  "homepage": "https://github.com/your-org/formlayer#readme",
+  "homepage": "https://kimamov.github.io/FormLayer/",
   "bugs": {
-    "url": "https://github.com/your-org/formlayer/issues"
+    "url": "https://github.com/kimamov/FormLayer/issues"
   },
   "keywords": [
     "forms",

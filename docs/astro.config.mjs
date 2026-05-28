@@ -2,10 +2,12 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
+	site: 'https://kimamov.github.io',
+	base: '/FormLayer/',
 	integrations: [
 		starlight({
 			title: 'FormLayer',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/kimamov/FormLayer' }],
 			sidebar: [
 				{
 					label: 'Getting Started',

@@ -4,6 +4,8 @@ Type-safe progressive enhancement for server-rendered HTML forms. No React, no V
 
 **Zero third-party runtime dependencies.** Optional plugins (combobox, client-variants, datepicker, altcha) are separate npm packages.
 
+**Documentation:** [kimamov.github.io/FormLayer](https://kimamov.github.io/FormLayer/)
+
 ## Install
 
 ```bash
