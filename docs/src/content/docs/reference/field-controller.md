@@ -80,6 +80,12 @@ ctrl.on('invalid', (state: FieldState) => { ... });
 ## FieldControllerOptions
 
 ```typescript
+interface FieldErrorRenderContext {
+  message: string;
+  index: number;
+  errors: string[];
+}
+
 interface FieldControllerOptions {
   validate?(
     value: string,
@@ -89,9 +95,24 @@ interface FieldControllerOptions {
 
   onServerErrors?(errors: string[], fieldName: string): string[];
 
+  /** CSS selector scoped to the field wrapper. Used after id-based lookups. */
+  errorsSelector?: string;
+
+  /** Resolve the errors container. Takes precedence over errorsSelector and built-in lookups. */
+  findErrorsElement?(field: FieldController): HTMLElement | null;
+
+  /** Render a single error message as HTML. Ignored when renderErrors is set. */
+  renderError?(ctx: FieldErrorRenderContext, field: FieldController): string;
+
+  /** Join rendered error fragments. Default: `'<br/>'`. Ignored when renderErrors is set. */
+  errorsSeparator?: string;
+
+  /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
   renderErrors?(errors: string[], ctx: FieldController): void;
 }
 ```
+
+See [Error Rendering](/guides/error-rendering/) for examples (custom containers, inline icons, form summaries).
 
 ### `validate`
 
@@ -101,9 +122,17 @@ Override the validation pipeline. Receives the current value, parsed rules, and 
 
 Transform or filter server errors before they are applied. Return the modified array.
 
+### `errorsSelector` / `findErrorsElement`
+
+Control which element receives error messages. Built-in lookup tries `#${input.id}-errors`, then group ids, then `errorsSelector`, then `.invalid-feedback`.
+
+### `renderError` / `errorsSeparator`
+
+Customize per-message HTML while keeping the default container resolution. `renderError` must return safe HTML if messages can contain user input — escape text yourself.
+
 ### `renderErrors`
 
-Replace the default error rendering. Called with the error array and the field controller instance. When provided, the default `innerHTML` writing to the errors element is skipped.
+Replace the default error rendering entirely. Called with the error array and the field controller instance.
 
 ## FieldValidationResult
 

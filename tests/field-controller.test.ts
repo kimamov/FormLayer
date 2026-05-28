@@ -202,6 +202,79 @@ describe('FieldController', () => {
       expect(errorsEl.innerHTML).toContain('This field is required.');
     });
 
+    it('uses errorsSelector to find the errors element', () => {
+      const wrapper = createFieldHTML({
+        name: 'field',
+        validate: [{ type: 'NotEmpty' }],
+      });
+      wrapper.querySelector('#field-input-errors')?.remove();
+      const input = wrapper.querySelector('input')!;
+      input.removeAttribute('id');
+
+      const customErrors = document.createElement('div');
+      customErrors.className = 'custom-errors';
+      customErrors.setAttribute('role', 'alert');
+      wrapper.appendChild(customErrors);
+
+      const ctrl = new FieldController(wrapper, { errorsSelector: '.custom-errors' });
+      ctrl.validate();
+
+      expect(customErrors.innerHTML).toContain('This field is required.');
+    });
+
+    it('uses findErrorsElement override', () => {
+      const wrapper = createFieldHTML({
+        name: 'field',
+        validate: [{ type: 'NotEmpty' }],
+      });
+      const customErrors = document.createElement('div');
+      customErrors.className = 'override-errors';
+      wrapper.appendChild(customErrors);
+
+      const ctrl = new FieldController(wrapper, {
+        findErrorsElement: () => customErrors,
+      });
+      ctrl.validate();
+
+      expect(customErrors.innerHTML).toContain('This field is required.');
+    });
+
+    it('uses renderError for each message', () => {
+      const wrapper = createFieldHTML({
+        name: 'field',
+        value: 'ab',
+        validate: [
+          { type: 'StringLength', options: { minimum: 5 } },
+          { type: 'EmailAddress' },
+        ],
+      });
+      const ctrl = new FieldController(wrapper, {
+        renderError: ({ message, index }) =>
+          `<span class="error-item" data-index="${index}">${message}</span>`,
+        errorsSeparator: '',
+      });
+      ctrl.validate();
+
+      const errorsEl = document.getElementById('field-input-errors')!;
+      expect(errorsEl.querySelectorAll('.error-item').length).toBeGreaterThanOrEqual(2);
+      expect(errorsEl.innerHTML).toContain('data-index="0"');
+      expect(errorsEl.innerHTML).toContain('data-index="1"');
+    });
+
+    it('uses renderErrors as a full override', () => {
+      const wrapper = createFieldHTML({
+        name: 'field',
+        validate: [{ type: 'NotEmpty' }],
+      });
+      const renderErrors = vi.fn();
+      const ctrl = new FieldController(wrapper, { renderErrors });
+      ctrl.validate();
+
+      expect(renderErrors).toHaveBeenCalledOnce();
+      expect(renderErrors.mock.calls[0][0]).toContain('This field is required.');
+      expect(document.getElementById('field-input-errors')!.innerHTML).toBe('');
+    });
+
     it('skips validation when disabled', () => {
       const wrapper = createFieldHTML({
         name: 'hidden_field',

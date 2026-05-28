@@ -42,5 +42,5 @@ export type {
   FormLoadingStateOptions,
 } from './forms/types';
 
-export type { FieldControllerOptions, FieldValidationResult } from './forms/field-controller';
+export type { FieldControllerOptions, FieldErrorRenderContext, FieldValidationResult } from './forms/field-controller';
 export type { FormControllerOptions } from './forms/form-controller';

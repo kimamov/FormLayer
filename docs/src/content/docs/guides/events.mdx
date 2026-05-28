@@ -42,6 +42,8 @@ form.once('form:valid', (detail) => {
 | `form:loading` | `FormEventDetail` | Loading state changed (`state.isSubmitting` toggled) |
 | `form:valid` | `FormEventDetail` | Form passes validation |
 | `form:invalid` | `FormEventDetail` | Form fails validation |
+
+For custom form-level error summaries (banners, toasts), listen to `form:invalid` or use `onFormInvalid` in `FormControllerOptions`. See [Error Rendering](/guides/error-rendering/#form-level-error-summary).
 | `form:reset` | `FormEventDetail` | Form is reset |
 
 ### Event Detail Types

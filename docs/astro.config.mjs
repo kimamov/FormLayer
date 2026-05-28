@@ -20,6 +20,7 @@ export default defineConfig({
 					label: 'Guides',
 					items: [
 						{ label: 'Validation', slug: 'guides/validation' },
+						{ label: 'Error Rendering', slug: 'guides/error-rendering' },
 						{ label: 'Events & Hooks', slug: 'guides/events' },
 						{ label: 'Loading State', slug: 'guides/loading-state' },
 						{ label: 'Plugins', slug: 'guides/plugins' },

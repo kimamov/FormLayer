@@ -24,7 +24,8 @@ export interface InitFieldOptions extends FieldControllerOptions {
  *     - `class`  → instantiates the plugin directly (no registry needed)
  *     - `instance` → attaches the plugin as-is
  *     - omitted → auto-detects from `data-field-type` via the plugin registry
- *  - `validate`, `onServerErrors`, `renderErrors` → field controller hooks
+ *  - `validate`, `onServerErrors`, `errorsSelector`, `findErrorsElement`,
+ *    `renderError`, `errorsSeparator`, `renderErrors` → field controller hooks
  *
  * For convenience, a bare PluginArg can also be passed directly as the
  * second argument (e.g. `initField(el, 'combobox')`).

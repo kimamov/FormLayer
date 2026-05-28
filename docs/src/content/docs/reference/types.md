@@ -61,13 +61,39 @@ interface FormLoadingStateOptions {
 }
 ```
 
+## FieldControllerOptions
+
+```typescript
+interface FieldErrorRenderContext {
+  message: string;
+  index: number;
+  errors: string[];
+}
+
+interface FieldControllerOptions {
+  validate?(
+    value: string,
+    rules: ValidatorRule[],
+    defaultValidate: () => FieldValidationResult
+  ): FieldValidationResult;
+  onServerErrors?(errors: string[], fieldName: string): string[];
+  errorsSelector?: string;
+  findErrorsElement?(field: FieldController): HTMLElement | null;
+  renderError?(ctx: FieldErrorRenderContext, field: FieldController): string;
+  errorsSeparator?: string;
+  renderErrors?(errors: string[], ctx: FieldController): void;
+}
+```
+
 ## FormControllerOptions
 
 ```typescript
 interface FormControllerOptions {
   fieldSelector?: string;
+  fieldOptions?: FieldControllerOptions;
   loadingState?: false | FormLoadingStateOptions;
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
+  onFormInvalid?: (detail: FormEventDetail) => void;
 }
 ```
 

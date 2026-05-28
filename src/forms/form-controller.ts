@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { SELECTORS } from './types';
 import { FieldController } from './field-controller';
+import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
 import { getPluginFactory } from './plugins/index';
 
@@ -22,10 +23,17 @@ const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
 
 export interface FormControllerOptions {
   fieldSelector?: string;
+  /** Options applied to every field controller in this form. */
+  fieldOptions?: FieldControllerOptions;
   /** Set to `false` to disable built-in submit-button loading UI. */
   loadingState?: false | FormLoadingStateOptions;
   /** Called whenever the form loading state changes. Runs after built-in UI unless disabled. */
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
+  /**
+   * Called when the form fails validation (client- or server-side).
+   * Complements the `form:invalid` event for imperative UI such as a summary banner.
+   */
+  onFormInvalid?: (detail: FormEventDetail) => void;
 }
 
 export class FormController implements FormControllerApi, FormPluginHost {
@@ -38,8 +46,10 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private readonly observer: MutationObserver;
   private readonly abortController = new AbortController();
   private readonly submitFn: FormSubmitFunction;
+  private readonly fieldOptions?: FieldControllerOptions;
   private readonly loadingStateOptions: false | FormLoadingStateOptions;
   private readonly onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
+  private readonly onFormInvalid?: (detail: FormEventDetail) => void;
 
   private _isSubmitting = false;
   private _allowSubmit = false;
@@ -50,8 +60,10 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.id = formEl.id;
     this.submitFn = submitFn;
     this.fieldSelector = options?.fieldSelector ?? SELECTORS.formField;
+    this.fieldOptions = options?.fieldOptions;
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
+    this.onFormInvalid = options?.onFormInvalid;
 
     this.formEl.setAttribute('novalidate', '');
 
@@ -91,6 +103,9 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
     const isValid = this.computeIsValid();
     const detail: FormEventDetail = { formId: this.id, state: this.getState() };
+    if (!isValid) {
+      this.onFormInvalid?.(detail);
+    }
     this.eventBus.emit(isValid ? 'form:valid' : 'form:invalid', detail);
 
     if (firstInvalid) {
@@ -168,7 +183,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     if (!name || this.fields.has(name)) return;
 
     try {
-      const ctrl = new FieldController(wrapper);
+      const ctrl = new FieldController(wrapper, this.fieldOptions);
       ctrl.setChangeCallback((state) => this.handleFieldChange(state));
       this.fields.set(name, ctrl);
 
@@ -326,6 +341,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     }
 
     const detail: FormEventDetail = { formId: this.id, state: this.getState() };
+    this.onFormInvalid?.(detail);
     this.eventBus.emit('form:invalid', detail);
   }
 
