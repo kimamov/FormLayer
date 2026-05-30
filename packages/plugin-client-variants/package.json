@@ -1,5 +1,5 @@
 {
-  "name": "@formlayer/plugin-client-variants",
+  "name": "formlayer-plugin-client-variants",
   "version": "0.1.0",
   "description": "Conditional field visibility form plugin for FormLayer",
   "type": "module",

@@ -11,14 +11,14 @@ A field plugin is activated by the `data-field-type` attribute on the field wrap
 
 ### Combobox
 
-Requires [`@formlayer/plugin-combobox`](https://www.npmjs.com/package/@formlayer/plugin-combobox):
+Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-plugin-combobox):
 
 ```bash
-npm install @formlayer/plugin-combobox
+npm install formlayer-plugin-combobox
 ```
 
 ```typescript
-import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
 
 registerComboboxPlugin();
 ```
@@ -50,14 +50,14 @@ The combobox supports:
 
 ### Datepicker
 
-Requires [`@formlayer/plugin-datepicker`](https://www.npmjs.com/package/@formlayer/plugin-datepicker):
+Requires [`formlayer-plugin-datepicker`](https://www.npmjs.com/package/formlayer-plugin-datepicker):
 
 ```bash
-npm install @formlayer/plugin-datepicker
+npm install formlayer-plugin-datepicker
 ```
 
 ```typescript
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
 
 registerDatepickerPlugin();
 ```
@@ -82,14 +82,14 @@ Form plugins operate on the entire form. They receive the `FormPluginHost` API f
 
 ### Client Variants
 
-Requires [`@formlayer/plugin-client-variants`](https://www.npmjs.com/package/@formlayer/plugin-client-variants):
+Requires [`formlayer-plugin-client-variants`](https://www.npmjs.com/package/formlayer-plugin-client-variants):
 
 ```bash
-npm install @formlayer/plugin-client-variants
+npm install formlayer-plugin-client-variants
 ```
 
 ```typescript
-import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
+import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
 
 registerClientVariantsPlugin();
 ```
@@ -150,10 +150,10 @@ With TYPO3, install and register plugins **before** calling `initTypo3Forms()`:
 
 ```typescript
 import { initTypo3Forms } from 'formlayer/typo3';
-import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
-import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
-import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
+import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
+import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
 
 registerComboboxPlugin();
 registerClientVariantsPlugin();

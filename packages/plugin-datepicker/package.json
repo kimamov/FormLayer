@@ -1,5 +1,5 @@
 {
-  "name": "@formlayer/plugin-datepicker",
+  "name": "formlayer-plugin-datepicker",
   "version": "0.1.0",
   "description": "Air Datepicker field plugin for FormLayer",
   "type": "module",

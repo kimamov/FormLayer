@@ -1,5 +1,5 @@
 {
-  "name": "@formlayer/plugin-combobox",
+  "name": "formlayer-plugin-combobox",
   "version": "0.1.0",
   "description": "Accessible combobox field plugin for FormLayer",
   "type": "module",

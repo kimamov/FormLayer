@@ -1,5 +1,5 @@
 {
-  "name": "@formlayer/plugin-altcha",
+  "name": "formlayer-plugin-altcha",
   "version": "0.1.0",
   "description": "ALTCHA captcha field plugins for FormLayer",
   "type": "module",

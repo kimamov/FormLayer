@@ -15,10 +15,10 @@ npm install formlayer
 Optional plugins:
 
 ```bash
-npm install @formlayer/plugin-combobox       # Accessible combobox for <select>
-npm install @formlayer/plugin-client-variants # Conditional field visibility
-npm install @formlayer/plugin-datepicker   # Air Datepicker
-npm install @formlayer/plugin-altcha       # ALTCHA captcha
+npm install formlayer-plugin-combobox       # Accessible combobox for <select>
+npm install formlayer-plugin-client-variants # Conditional field visibility
+npm install formlayer-plugin-datepicker   # Air Datepicker
+npm install formlayer-plugin-altcha       # ALTCHA captcha
 ```
 
 ## Quick start
@@ -49,10 +49,10 @@ formRegistry.init(async (ctx) => {
 ## Optional plugins
 
 ```typescript
-import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
-import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
-import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
+import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
+import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
 import { initTypo3Forms } from 'formlayer/typo3';
 
 registerComboboxPlugin();
@@ -75,11 +75,11 @@ initTypo3Forms();
 
 | Package | Description |
 |---------|-------------|
-| `@formlayer/plugin-combobox` | `data-field-type="combobox"` (accessible select) |
-| `@formlayer/plugin-client-variants` | Conditional field visibility via `data-client-variants` |
-| `@formlayer/plugin-datepicker` | `data-field-type="datepicker"` (Air Datepicker) |
-| `@formlayer/plugin-altcha` | Generic ALTCHA plugin |
-| `@formlayer/plugin-altcha/typo3` | TYPO3 ALTCHA integration |
+| `formlayer-plugin-combobox` | `data-field-type="combobox"` (accessible select) |
+| `formlayer-plugin-client-variants` | Conditional field visibility via `data-client-variants` |
+| `formlayer-plugin-datepicker` | `data-field-type="datepicker"` (Air Datepicker) |
+| `formlayer-plugin-altcha` | Generic ALTCHA plugin |
+| `formlayer-plugin-altcha/typo3` | TYPO3 ALTCHA integration |
 
 ## Development
 

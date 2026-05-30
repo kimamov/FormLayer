@@ -79,15 +79,15 @@ If you're using TYPO3, a single call handles everything:
 
 ```typescript
 import { initTypo3Forms } from 'formlayer/typo3';
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
-import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
+import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
 
 registerDatepickerPlugin();
 registerTypo3AltchaPlugin();
 initTypo3Forms();
 ```
 
-This registers all validators, sets up combobox and client-variants plugins, and initializes AJAX form submission. Install `@formlayer/plugin-datepicker` and `@formlayer/plugin-altcha` when your forms use those field types.
+This registers all validators, sets up combobox and client-variants plugins, and initializes AJAX form submission. Install `formlayer-plugin-datepicker` and `formlayer-plugin-altcha` when your forms use those field types.
 
 ## How Validation Works
 

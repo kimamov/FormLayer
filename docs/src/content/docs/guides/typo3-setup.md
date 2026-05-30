@@ -11,10 +11,10 @@ The TYPO3 integration layer wraps the generic FormLayer library with TYPO3-speci
 
 ```typescript
 import { initTypo3Forms } from 'formlayer/typo3';
-import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
-import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
-import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
+import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
+import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
 
 registerComboboxPlugin();
 registerClientVariantsPlugin();

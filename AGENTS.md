@@ -7,10 +7,10 @@ Context for AI agents working in the **FormLayer** npm monorepo.
 | Package | Path | Third-party deps |
 |---------|------|------------------|
 | `formlayer` | `.` (root) | **None** |
-| `@formlayer/plugin-combobox` | `packages/plugin-combobox/` | **None** |
-| `@formlayer/plugin-client-variants` | `packages/plugin-client-variants/` | **None** |
-| `@formlayer/plugin-datepicker` | `packages/plugin-datepicker/` | `air-datepicker` |
-| `@formlayer/plugin-altcha` | `packages/plugin-altcha/` | `altcha` |
+| `formlayer-plugin-combobox` | `packages/plugin-combobox/` | **None** |
+| `formlayer-plugin-client-variants` | `packages/plugin-client-variants/` | **None** |
+| `formlayer-plugin-datepicker` | `packages/plugin-datepicker/` | `air-datepicker` |
+| `formlayer-plugin-altcha` | `packages/plugin-altcha/` | `altcha` |
 
 Core `formlayer` must never import `air-datepicker`, `altcha`, or other third-party libraries. Optional plugins live in separate packages with their own dependencies.
 
@@ -19,10 +19,10 @@ Core `formlayer` must never import `air-datepicker`, `altcha`, or other third-pa
 Plugins are **not** auto-registered by `initTypo3Forms()`. Consumers install and register explicitly:
 
 ```typescript
-import { registerComboboxPlugin } from '@formlayer/plugin-combobox';
-import { registerClientVariantsPlugin } from '@formlayer/plugin-client-variants';
-import { registerDatepickerPlugin } from '@formlayer/plugin-datepicker';
-import { registerTypo3AltchaPlugin } from '@formlayer/plugin-altcha/typo3';
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
+import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
+import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
+import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
 import { initTypo3Forms } from 'formlayer/typo3';
 
 registerComboboxPlugin();
