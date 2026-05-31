@@ -22,6 +22,32 @@ export interface FieldState {
   errors: string[];
 }
 
+export interface FieldValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+/** Form participation contract — implemented by FieldController and custom field types. */
+export interface FormField {
+  readonly name: string;
+  getState(): FieldState;
+  validate(): FieldValidationResult;
+  reset(): void;
+  destroy(): void;
+  setEnabled(enabled: boolean): void;
+  setServerErrors(errors: string[]): void;
+  /** Wire field state changes into the parent form (no-op for standalone use). */
+  connect(onChange: (state: FieldState) => void): void;
+  focus(): void;
+}
+
+export type FormFieldClass = new (wrapper: HTMLElement, options?: Record<string, unknown>) => FormField;
+
+export type FormFieldFactory =
+  | FormFieldClass
+  | (() => Promise<{ default: FormFieldClass }>);
+
+
 export interface FormState {
   id: string;
   isValid: boolean;
@@ -76,6 +102,17 @@ export interface FormLoadingStateOptions {
   attribute?: string;
   /** Selector used when no submitter is available. Default: submit buttons in the form. */
   submitSelector?: string;
+}
+
+export interface AddFieldFromElementOptions {
+  field?: FormFieldFactory;
+  validate?: (
+    value: string,
+    rules: ValidatorRule[],
+    defaultValidate: () => FieldValidationResult,
+  ) => FieldValidationResult;
+  onServerErrors?: (errors: string[], fieldName: string) => string[];
+  renderErrors?: (errors: string[], field: FormField) => void;
 }
 
 export interface FormControllerApi {

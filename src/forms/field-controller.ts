@@ -1,4 +1,4 @@
-import type { FieldState, ValidatorRule, FieldPlugin, FieldPluginHost, FieldControllerEventType, FieldControllerEventHandler } from './types';
+import type { FieldState, ValidatorRule, FieldPlugin, FieldPluginHost, FieldControllerEventType, FieldControllerEventHandler, FormField } from './types';
 import { CSS_CLASSES, SELECTORS, DEBOUNCE_MS } from './types';
 import { runValidators } from './validators/index';
 
@@ -25,9 +25,11 @@ export interface FieldControllerOptions {
   errorsSeparator?: string;
   /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
   renderErrors?: (errors: string[], ctx: FieldController) => void;
+
+  [key: string]: unknown
 }
 
-export class FieldController implements FieldPluginHost {
+export class FieldController implements FormField {
   readonly name: string;
   private readonly wrapper: HTMLElement;
   private input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -43,7 +45,6 @@ export class FieldController implements FieldPluginHost {
   private plugin: FieldPlugin | null = null;
   private _serverErrors: string[] = [];
   private _serverErrorValue: string | null = null;
-  private _destroyed = false;
   private readonly fieldListeners = new Map<FieldControllerEventType, Set<FieldControllerEventHandler>>();
 
   private options: FieldControllerOptions = {};
@@ -76,9 +77,11 @@ export class FieldController implements FieldPluginHost {
     this.bind();
   }
 
-  get state(): FieldState {
+  getState(): FieldState {
     return { ...this._state };
   }
+
+
 
   get element(): HTMLElement {
     return this.wrapper;
@@ -119,8 +122,12 @@ export class FieldController implements FieldPluginHost {
     this.notifyChange();
   }
 
-  setChangeCallback(cb: (state: FieldState) => void): void {
-    this.onChange = cb;
+  connect(onChange: (state: FieldState) => void): void {
+    this.onChange = onChange;
+  }
+
+  focus(): void {
+    this.inputElement.focus();
   }
 
   on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
@@ -147,10 +154,9 @@ export class FieldController implements FieldPluginHost {
   private emitFieldEvent(event: FieldControllerEventType): void {
     const set = this.fieldListeners.get(event);
     if (!set) return;
-    const state = this.state;
     for (const handler of [...set]) {
       try {
-        handler(state);
+        handler({...this._state});
       } catch (err) {
         console.error(`[FormsModule] Error in field "${this.name}" "${event}" handler:`, err);
       }
@@ -170,14 +176,6 @@ export class FieldController implements FieldPluginHost {
     this.notifyChange();
   }
 
-  async attachPlugin(plugin: FieldPlugin): Promise<void> {
-    if (this._destroyed) return;
-    if (this.plugin) {
-      this.plugin.destroy();
-    }
-    this.plugin = plugin;
-    await plugin.init(this.wrapper, this);
-  }
 
   /** Allows the plugin to swap the hidden input it writes to (e.g. combobox hides the select). */
   replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void {
@@ -270,7 +268,6 @@ export class FieldController implements FieldPluginHost {
   }
 
   destroy(): void {
-    this._destroyed = true;
     this.plugin?.destroy();
     this.plugin = null;
     this.abortController.abort();
@@ -344,7 +341,7 @@ export class FieldController implements FieldPluginHost {
     this._state.value = this.readValue();
     this.emitFieldEvent('change');
     this.emitFieldEvent(this._state.isValid ? 'valid' : 'invalid');
-    this.onChange?.(this.state);
+    this.onChange?.({...this._state});
   }
 
   private readValue(): string {
