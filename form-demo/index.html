@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>form-demo</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>form playground</h1>
+      <form id="contact" action="/api/contact" method="post">
+        <div data-form-field="name"
+             data-validate='[{"type":"NotEmpty","options":{"message":"Please enter your name"}}]'>
+          <label for="name">Name</label>
+          <input id="name" type="text" name="name" />
+          <div id="name-errors" class="invalid-feedback"></div>
+        </div>
+      
+        <div data-form-field="email"
+             data-validate='[
+               {"type":"NotEmpty","options":{"message":"Email is required"}},
+               {"type":"EmailAddress","options":{"message":"Please enter a valid email"}}
+             ]'>
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" />
+          <div id="email-errors" class="invalid-feedback"></div>
+        </div>
+      
+        <div data-form-field="message"
+             data-validate='[
+               {"type":"NotEmpty","options":{"message":"Please enter a message"}},
+               {"type":"StringLength","options":{"minimum":10,"message":"Message must be at least 10 characters"}}
+             ]'>
+          <label for="message">Message</label>
+          <textarea id="message" name="message"></textarea>
+          <div id="message-errors" class="invalid-feedback"></div>
+        </div>
+      
+        <button type="submit">Send Message</button>
+      </form>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
