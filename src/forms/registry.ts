@@ -6,13 +6,25 @@ import { registerValidator } from './validators/index';
 import { registerPlugin, unregisterPlugin, hasPlugin } from './plugins/index';
 import type { Validator } from './types';
 
+export interface RegistryInitArguments {
+  submitFn: FormSubmitFunction;
+  root?: ParentNode;
+  formSelector?: string;
+  controllerOptions?: FormControllerOptions;
+}
+
 export class FormRegistry {
   private readonly forms = new Map<string, FormController>();
   private readonly formPluginFactories: FormPluginFactory[] = [];
   private readonly eventBus = new EventBus();
   private _initialized = false;
 
-  init(submitFn: FormSubmitFunction, root: ParentNode = document, formSelector = 'form[id]', controllerOptions?: FormControllerOptions): void {
+  init({
+    submitFn,
+    root = document,
+    formSelector = 'form[id]',
+    controllerOptions,
+  }: RegistryInitArguments): void {
     this._initialized = true;
     const formElements = root.querySelectorAll<HTMLFormElement>(formSelector);
     formElements.forEach((formEl) => this.register(formEl, submitFn, controllerOptions));

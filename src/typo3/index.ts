@@ -68,7 +68,7 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
 
   const formSelector = options?.formSelector;
 
-  const init = () => formRegistry.init(submitFn, document, formSelector, controllerOptions);
+  const init = () => formRegistry.init({ submitFn, formSelector, controllerOptions });
 
   let domListener: (() => void) | null = null;
   if (document.readyState === 'loading') {

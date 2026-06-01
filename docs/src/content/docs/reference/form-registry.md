@@ -11,17 +11,17 @@ import { formRegistry } from 'formlayer';
 
 ## Methods
 
-### `init(submitFn, root?, formSelector?, controllerOptions?)`
+### `init(options)`
 
 Discovers and registers all matching forms.
 
 ```typescript
-formRegistry.init(
+formRegistry.init({
   submitFn: FormSubmitFunction,
-  root?: ParentNode,           // default: document
-  formSelector?: string,       // default: 'form[id]'
-  controllerOptions?: FormControllerOptions  // fieldSelector, fieldOptions, fieldsMap, loadingState, etc.
-): void
+  root?: ParentNode,              // default: document
+  formSelector?: string,          // default: 'form[id]'
+  controllerOptions?: FormControllerOptions,
+}): void
 ```
 
 ### `register(formEl, submitFn, controllerOptions?)`

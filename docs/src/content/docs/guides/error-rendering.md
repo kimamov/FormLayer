@@ -51,9 +51,12 @@ Use `errorsSelector` when your markup uses a different class or places the conta
 ```typescript
 import { formRegistry } from 'formlayer';
 
-formRegistry.init(submitFn, document, 'form[id]', {
-  fieldOptions: {
-    errorsSelector: '.field-errors',
+formRegistry.init({
+  submitFn,
+  controllerOptions: {
+    fieldOptions: {
+      errorsSelector: '.field-errors',
+    },
   },
 });
 ```
@@ -69,13 +72,16 @@ For markup that does not fit the built-in lookups at all, use `findErrorsElement
 ```
 
 ```typescript
-formRegistry.init(submitFn, document, 'form[id]', {
-  fieldOptions: {
-    findErrorsElement(field) {
-      if (field.name === 'phone') {
-        return document.getElementById('phone-errors-panel');
-      }
-      return field.element.querySelector('.invalid-feedback');
+formRegistry.init({
+  submitFn,
+  controllerOptions: {
+    fieldOptions: {
+      findErrorsElement(field) {
+        if (field.name === 'phone') {
+          return document.getElementById('phone-errors-panel');
+        }
+        return field.element.querySelector('.invalid-feedback');
+      },
     },
   },
 });
@@ -94,16 +100,19 @@ const ERROR_ICON = `
     <path fill="currentColor" d="M8 4.5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4.5zm0 7a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75z"/>
   </svg>`;
 
-formRegistry.init(submitFn, document, 'form[id]', {
-  fieldOptions: {
-    renderError({ message, index }, field) {
-      return `
-        <span class="field-error" id="${field.name}-error-${index}" role="alert">
-          ${ERROR_ICON}
-          <span class="field-error__text">${escapeHtml(message)}</span>
-        </span>`;
+formRegistry.init({
+  submitFn,
+  controllerOptions: {
+    fieldOptions: {
+      renderError({ message, index }, field) {
+        return `
+          <span class="field-error" id="${field.name}-error-${index}" role="alert">
+            ${ERROR_ICON}
+            <span class="field-error__text">${escapeHtml(message)}</span>
+          </span>`;
+      },
+      errorsSeparator: '',
     },
-    errorsSeparator: '',
   },
 });
 
@@ -239,13 +248,16 @@ See [Events & Hooks](/guides/events/) for the full event reference.
 Pass shared field options through `FormControllerOptions.fieldOptions`:
 
 ```typescript
-formRegistry.init(submitFn, document, 'form[id]', {
-  fieldOptions: {
-    errorsSelector: '[data-field-error]',
-    renderError: ({ message, index }, field) => /* … */,
-    errorsSeparator: '',
+formRegistry.init({
+  submitFn,
+  controllerOptions: {
+    fieldOptions: {
+      errorsSelector: '[data-field-error]',
+      renderError: ({ message, index }, field) => /* … */,
+      errorsSeparator: '',
+    },
+    onFormInvalid: ({ state }) => { /* form summary … */ },
   },
-  onFormInvalid: ({ state }) => { /* form summary … */ },
 });
 ```
 

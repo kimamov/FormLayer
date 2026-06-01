@@ -1,4 +1,5 @@
 export { formRegistry, FormRegistry } from './forms/registry';
+export type { RegistryInitArguments } from './forms/registry';
 export { registerPlugin, hasPlugin, unregisterPlugin } from './forms/plugins/index';
 export {
   registerDefaultValidators,

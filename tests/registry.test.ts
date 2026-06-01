@@ -70,7 +70,7 @@ describe('FormRegistry', () => {
     createForm('form1');
     createForm('form2');
 
-    registry.init(noopSubmit);
+    registry.init({ submitFn: noopSubmit });
     const all = registry.getAll();
     expect(all.size).toBe(2);
     expect(all.has('form1')).toBe(true);
@@ -87,7 +87,7 @@ describe('FormRegistry', () => {
     noIdForm.innerHTML = '<div data-form-field="x"><input type="text"></div>';
     document.body.appendChild(noIdForm);
 
-    registry.init(noopSubmit);
+    registry.init({ submitFn: noopSubmit });
     expect(registry.getAll().size).toBe(2);
   });
 
@@ -161,7 +161,7 @@ describe('FormRegistry', () => {
       // another form outside the container
       createForm('outside');
 
-      registry.init(noopSubmit, container);
+      registry.init({ submitFn: noopSubmit, root: container });
       expect(registry.getAll().size).toBe(1);
       expect(registry.get('scoped')).toBeDefined();
     });

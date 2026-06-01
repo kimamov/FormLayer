@@ -7,7 +7,7 @@ A `FormControllerApi` is returned by `formRegistry.register()` or `formRegistry.
 
 ## FormControllerOptions
 
-Pass options as the third argument to `formRegistry.register()` or `formRegistry.init()`:
+Pass options as the third argument to `formRegistry.register()`, or via the `controllerOptions` field of `formRegistry.init()`:
 
 ```typescript
 interface FormControllerOptions {
