@@ -1,6 +1,6 @@
 export { formRegistry, FormRegistry } from './forms/registry';
 export type { RegistryInitArguments } from './forms/registry';
-export { registerPlugin, hasPlugin, unregisterPlugin } from './forms/plugins/index';
+export { registerFieldType, unregisterFieldType, hasFieldType, getRegisteredFieldTypes, mergeFieldsMap } from './forms/field-types';
 export {
   registerDefaultValidators,
   registerValidator,
@@ -12,17 +12,21 @@ export { initField, initFieldAsync } from './forms/init-field';
 export type { InitFieldOptions } from './forms/init-field';
 export { createField, createFieldAsync, isLazyFactory } from './forms/create-field';
 export type { CustomFieldsMap, CreateFieldOptions } from './forms/create-field';
+export { AbstractDomFormField } from './forms/abstract-dom-field';
+export type { AbstractDomFieldOptions } from './forms/abstract-dom-field';
+export { FieldEmitter } from './forms/field-emitter';
+export { FieldErrorPresenter } from './forms/field-error-presenter';
+export type { FieldErrorPresenterOptions } from './forms/field-error-presenter';
+export { CSS_CLASSES, SELECTORS, DEBOUNCE_MS } from './forms/types';
 
 export type {
-  FieldPlugin,
-  FieldPluginFactory,
-  FieldPluginHost,
   FormPlugin,
   FormPluginFactory,
   FormPluginHost,
   FormField,
   FormFieldClass,
   FormFieldFactory,
+  DomFormField,
   ClientVariant,
   FormSubmitContext,
   FormSubmitActions,

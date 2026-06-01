@@ -1,14 +1,14 @@
-import { registerPlugin } from 'formlayer';
-import type { FieldPluginFactory } from 'formlayer';
+import { registerFieldType } from 'formlayer';
+import type { FormFieldFactory } from 'formlayer';
 
-export { default as AltchaPlugin } from './altcha';
+export { default as AltchaField } from './altcha';
 export { default } from './altcha';
 
-export const ALTCHA_PLUGIN_TYPE = 'altcha';
+export const ALTCHA_FIELD_TYPE = 'altcha';
 
-export const altchaPluginFactory: FieldPluginFactory = () => import('./altcha');
+export const altchaFieldFactory: FormFieldFactory = () => import('./altcha');
 
-/** Register the generic ALTCHA field plugin (`data-field-type="altcha"`). */
-export function registerAltchaPlugin(type: string = ALTCHA_PLUGIN_TYPE): void {
-  registerPlugin(type, altchaPluginFactory);
+/** Register the generic ALTCHA field type (`data-field-type="altcha"`). */
+export function registerAltchaPlugin(type: string = ALTCHA_FIELD_TYPE): void {
+  registerFieldType(type, altchaFieldFactory);
 }

@@ -1,5 +1,5 @@
 import { formRegistry } from '../forms/registry';
-import { registerPlugin } from '../forms/plugins/index';
+import { registerFieldType } from '../forms/field-types';
 import { registerDefaultValidators } from '../forms/validators';
 import { createTypo3Submit } from './submit';
 import type { Typo3FormsOptions, Typo3FormsApi } from './types';
@@ -26,15 +26,19 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
     formRegistry.registerValidator(v);
   }
 
-  for (const [type, factory] of Object.entries(options?.additionalFieldPlugins ?? {})) {
-    registerPlugin(type, factory);
+  for (const [type, factory] of Object.entries(options?.additionalFieldTypes ?? {})) {
+    registerFieldType(type, factory);
   }
 
   for (const factory of options?.additionalFormPlugins ?? []) {
     formRegistry.registerFormPlugin(factory);
   }
 
-  const controllerOptions = options?.fieldSelector ? { fieldSelector: options.fieldSelector } : undefined;
+  const controllerOptions = {
+    ...(options?.fieldSelector ? { fieldSelector: options.fieldSelector } : {}),
+    ...(options?.fieldsMap ? { fieldsMap: options.fieldsMap } : {}),
+  };
+  const hasControllerOptions = Object.keys(controllerOptions).length > 0;
 
   const unmount = (formEl: HTMLFormElement): void => {
     formRegistry.unregister(formEl.id);
@@ -48,7 +52,7 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
 
     const newFormEl = document.getElementById(formId) as HTMLFormElement | null;
     if (newFormEl) {
-      formRegistry.register(newFormEl, submitFn, controllerOptions);
+      formRegistry.register(newFormEl, submitFn, hasControllerOptions ? controllerOptions : undefined);
     }
     return newFormEl;
   };
@@ -68,7 +72,11 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
 
   const formSelector = options?.formSelector;
 
-  const init = () => formRegistry.init({ submitFn, formSelector, controllerOptions });
+  const init = () => formRegistry.init({
+    submitFn,
+    formSelector,
+    controllerOptions: hasControllerOptions ? controllerOptions : undefined,
+  });
 
   let domListener: (() => void) | null = null;
   if (document.readyState === 'loading') {

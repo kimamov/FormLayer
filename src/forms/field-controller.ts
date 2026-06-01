@@ -1,16 +1,14 @@
 import type { FieldState, FieldValidationResult, ValidatorRule, FieldControllerEventType, FieldControllerEventHandler, FormField } from './types';
-import { CSS_CLASSES, SELECTORS, DEBOUNCE_MS } from './types';
+import { SELECTORS, DEBOUNCE_MS } from './types';
 import { runValidators } from './validators/index';
+import { FieldEmitter } from './field-emitter';
+import { FieldErrorPresenter, type FieldErrorRenderContext } from './field-error-presenter';
 
 const NATIVE_CONSTRAINT_ATTRS = [
   'required', 'pattern', 'minlength', 'maxlength', 'min', 'max', 'step',
 ] as const;
 
-export interface FieldErrorRenderContext {
-  message: string;
-  index: number;
-  errors: string[];
-}
+export type { FieldErrorRenderContext };
 
 export interface FieldControllerOptions {
   validate?: (value: string, rules: ValidatorRule[], defaultValidate: () => FieldValidationResult) => FieldValidationResult;
@@ -24,7 +22,7 @@ export interface FieldControllerOptions {
   /** Join rendered error fragments. Default: `<br/>`. Ignored when renderErrors is set. */
   errorsSeparator?: string;
   /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
-  renderErrors?: (errors: string[], ctx: FieldController) => void;
+  renderErrors?: (errors: string[], field: FieldController) => void;
 
   [key: string]: unknown
 }
@@ -33,10 +31,11 @@ export class FieldController implements FormField {
   readonly name: string;
   private readonly wrapper: HTMLElement;
   private input: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-  private readonly errorsEl: HTMLElement | null;
+  private readonly errorPresenter: FieldErrorPresenter<FieldController>;
   private readonly rules: ValidatorRule[];
   private readonly abortController = new AbortController();
   private readonly savedNativeAttrs = new Map<string, string>();
+  private readonly emitter = new FieldEmitter();
 
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private _state: FieldState;
@@ -44,7 +43,6 @@ export class FieldController implements FormField {
   private onChange: ((state: FieldState) => void) | null = null;
   private _serverErrors: string[] = [];
   private _serverErrorValue: string | null = null;
-  private readonly fieldListeners = new Map<FieldControllerEventType, Set<FieldControllerEventHandler>>();
 
   private options: FieldControllerOptions = {};
 
@@ -60,7 +58,12 @@ export class FieldController implements FormField {
 
     this.options=options;
 
-    this.errorsEl = this.findErrorsElement();
+    this.errorPresenter = new FieldErrorPresenter<FieldController>(
+      this.wrapper,
+      () => this.input,
+      this,
+      this.options,
+    );
     this.rules = this.parseRules();
     this.disableNativeValidation();
 
@@ -130,55 +133,31 @@ export class FieldController implements FormField {
   }
 
   on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
-    let set = this.fieldListeners.get(event);
-    if (!set) {
-      set = new Set();
-      this.fieldListeners.set(event, set);
-    }
-    set.add(handler);
+    this.emitter.on(event, handler);
   }
 
   once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
-    const wrapper: FieldControllerEventHandler = (state) => {
-      this.off(event, wrapper);
-      handler(state);
-    };
-    this.on(event, wrapper);
+    this.emitter.once(event, handler);
   }
 
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
-    this.fieldListeners.get(event)?.delete(handler);
+    this.emitter.off(event, handler);
   }
 
-  private emitFieldEvent(event: FieldControllerEventType): void {
-    const set = this.fieldListeners.get(event);
-    if (!set) return;
-    for (const handler of [...set]) {
-      try {
-        handler({...this._state});
-      } catch (err) {
-        console.error(`[FormsModule] Error in field "${this.name}" "${event}" handler:`, err);
-      }
-    }
+  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void {
+    this.input = newInput;
   }
 
   setValue(value: string): void {
-    if (this.input instanceof HTMLInputElement || this.input instanceof HTMLTextAreaElement) {
-      this.input.value = value;
-    } else if (this.input instanceof HTMLSelectElement) {
+    if (this.input instanceof HTMLInputElement || this.input instanceof HTMLTextAreaElement || this.input instanceof HTMLSelectElement) {
       this.input.value = value;
     }
+    
     this._state.value = value;
     this._state.isDirty = true;
     this._state.isTouched = true;
     this.validate();
     this.notifyChange();
-  }
-
-
-  /** Allows the plugin to swap the hidden input it writes to (e.g. combobox hides the select). */
-  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void {
-    this.input = newInput;
   }
 
   validate(): FieldValidationResult {
@@ -271,7 +250,7 @@ export class FieldController implements FormField {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.restoreNativeValidation();
     this.onChange = null;
-    this.fieldListeners.clear();
+    this.emitter.destroy();
   }
 
   private disableNativeValidation(): void {
@@ -336,8 +315,8 @@ export class FieldController implements FormField {
 
   private notifyChange(): void {
     this._state.value = this.readValue();
-    this.emitFieldEvent('change');
-    this.emitFieldEvent(this._state.isValid ? 'valid' : 'invalid');
+    this.emitter.emit('change', this._state, this.name);
+    this.emitter.emit(this._state.isValid ? 'valid' : 'invalid', this._state, this.name);
     this.onChange?.({...this._state});
   }
 
@@ -373,79 +352,8 @@ export class FieldController implements FormField {
     return values.join(',');
   }
 
-  private findErrorsElement(): HTMLElement | null {
-    if (this.options.findErrorsElement) {
-      return this.options.findErrorsElement(this);
-    }
-
-    const uniqueId = this.input.id;
-    if (uniqueId) {
-      const el = document.getElementById(`${uniqueId}-errors`);
-      if (el) return el;
-    }
-
-    const groupContainer = this.wrapper.querySelector('[role="radiogroup"], [role="group"]');
-    if (groupContainer?.id) {
-      const el = document.getElementById(`${groupContainer.id}-errors`);
-      if (el) return el;
-    }
-
-    if (this.options.errorsSelector) {
-      const el = this.wrapper.querySelector<HTMLElement>(this.options.errorsSelector);
-      if (el) return el;
-    }
-
-    return this.wrapper.querySelector(`.${CSS_CLASSES.errorMsgClass}`);
-  }
-
   private updateDOM(isValid: boolean, errors: string[]): void {
-    if (isValid) {
-      this.input.classList.remove(CSS_CLASSES.errorClass);
-      this.wrapper.classList.remove(CSS_CLASSES.errorClass);
-      this.input.removeAttribute('aria-invalid');
-      this.removeErrorsFromDescribedBy();
-    } else {
-      this.input.classList.add(CSS_CLASSES.errorClass);
-      this.wrapper.classList.add(CSS_CLASSES.errorClass);
-      this.input.setAttribute('aria-invalid', 'true');
-      this.addErrorsToDescribedBy();
-    }
-
-    if (this.options.renderErrors) {
-      this.options.renderErrors(errors, this);
-    } else if (this.errorsEl) {
-      const separator = this.options.errorsSeparator ?? '<br/>';
-      this.errorsEl.innerHTML = errors
-        .map((msg, index) => {
-          if (this.options.renderError) {
-            return this.options.renderError({ message: msg, index, errors }, this);
-          }
-          return this.escapeHtml(msg);
-        })
-        .join(separator);
-    }
-  }
-
-
-  private addErrorsToDescribedBy(): void {
-    if (!this.errorsEl?.id) return;
-    const current = this.input.getAttribute('aria-describedby') ?? '';
-    const ids = current.split(/\s+/).filter(Boolean);
-    if (!ids.includes(this.errorsEl.id)) {
-      ids.push(this.errorsEl.id);
-      this.input.setAttribute('aria-describedby', ids.join(' '));
-    }
-  }
-
-  private removeErrorsFromDescribedBy(): void {
-    if (!this.errorsEl?.id) return;
-    const current = this.input.getAttribute('aria-describedby') ?? '';
-    const ids = current.split(/\s+/).filter((id) => id !== this.errorsEl!.id);
-    if (ids.length > 0) {
-      this.input.setAttribute('aria-describedby', ids.join(' '));
-    } else {
-      this.input.removeAttribute('aria-describedby');
-    }
+    this.errorPresenter.update(isValid, errors);
   }
 
   private parseRules(): ValidatorRule[] {
@@ -460,11 +368,5 @@ export class FieldController implements FormField {
       console.warn(`[FormsModule] Invalid data-validate JSON on field "${this.name}"`);
       return [];
     }
-  }
-
-  private escapeHtml(str: string): string {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
   }
 }

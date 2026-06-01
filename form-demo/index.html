@@ -36,6 +36,20 @@
           <textarea id="message" name="message"></textarea>
           <div id="message-errors" class="invalid-feedback"></div>
         </div>
+
+        <div data-form-field="country"
+             data-field-type="combobox"
+             data-validate='[{"type":"NotEmpty","options":{"message":"Please choose a country"}}]'>
+          <label for="country">Country</label>
+          <select id="country" name="country">
+            <option value="">Choose a country…</option>
+            <option value="de">Germany</option>
+            <option value="at">Austria</option>
+            <option value="ch">Switzerland</option>
+            <option value="fr">France</option>
+          </select>
+          <div id="country-errors" class="invalid-feedback"></div>
+        </div>
       
         <button type="submit">Send Message</button>
       </form>

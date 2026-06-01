@@ -1,9 +1,9 @@
-import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FieldPluginFactory, FormPluginFactory, FormSubmitFunction } from './types';
+import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FormFieldFactory, FormPluginFactory, FormSubmitFunction } from './types';
 import { FormController } from './form-controller';
 import type { FormControllerOptions } from './form-controller';
 import { EventBus } from './events';
 import { registerValidator } from './validators/index';
-import { registerPlugin, unregisterPlugin, hasPlugin } from './plugins/index';
+import { registerFieldType, unregisterFieldType, hasFieldType } from './field-types';
 import type { Validator } from './types';
 
 export interface RegistryInitArguments {
@@ -84,16 +84,16 @@ export class FormRegistry {
     registerValidator(validator);
   }
 
-  registerPlugin(type: string, factory: FieldPluginFactory): void {
-    registerPlugin(type, factory);
+  registerFieldType(type: string, factory: FormFieldFactory): void {
+    registerFieldType(type, factory);
   }
 
-  unregisterPlugin(type: string): boolean {
-    return unregisterPlugin(type);
+  unregisterFieldType(type: string): boolean {
+    return unregisterFieldType(type);
   }
 
-  hasPlugin(type: string): boolean {
-    return hasPlugin(type);
+  hasFieldType(type: string): boolean {
+    return hasFieldType(type);
   }
 
   registerFormPlugin(factory: FormPluginFactory): void {

@@ -1,5 +1,4 @@
-import type { FieldPlugin, FieldPluginHost } from 'formlayer';
-
+import { AbstractDomFormField, SELECTORS } from 'formlayer';
 
 const PHP_TO_AIR: Record<string, string> = {
   Y: 'yyyy', y: 'yy',
@@ -21,50 +20,103 @@ function phpFormatToAir(php: string): string {
 }
 
 /**
- * Progressive enhancement: wraps the text input rendered by
- * `formvh:form.datePicker` (with enableDatePicker=false) with
- * Air Datepicker.  If the library fails to load the plain text
- * input remains fully functional.
+ * Wraps a text input with Air Datepicker. If the library fails to load,
+ * the plain text input remains fully functional.
  */
-export default class DatePickerPlugin implements FieldPlugin {
+export default class DatePickerField extends AbstractDomFormField {
+  private textInput!: HTMLInputElement;
   private picker: AirDatepicker | null = null;
 
-  async init(_wrapper: HTMLElement, host: FieldPluginHost): Promise<void> {
-    const input = host.inputElement as HTMLInputElement;
-    const phpFormat = input.closest('[data-field-type]')
-      ?.querySelector<HTMLInputElement>('input[type="hidden"][name$="[dateFormat]"]')
-      ?.value ?? 'Y-m-d';
+  protected mount(): void {
+    const input = this.wrapper.querySelector<HTMLInputElement>(SELECTORS.input);
+    if (!input) {
+      throw new Error(`[FormsModule] DatePickerField "${this.name}" requires a text input`);
+    }
+    this.textInput = input;
+    this.setControlElement(input);
 
-    const airFormat = phpFormatToAir(phpFormat);
+    this.textInput.addEventListener('blur', () => {
+      this.markTouched();
+      this.validate();
+      this.notifyChange();
+    }, { signal: this.signal });
 
-    const { default: AirDatepicker } = await import('air-datepicker');
-    await import('air-datepicker/air-datepicker.css');
-    const enModule = await import('air-datepicker/locale/en');
-    const mod = enModule as { default?: Record<string, unknown> };
-    const locale = mod.default && 'days' in mod.default ? mod.default : mod.default ?? enModule;
+    this.textInput.addEventListener('input', () => {
+      this.markDirty();
+    }, { signal: this.signal });
 
-    const initial = input.value ? this.parseByFormat(input.value, phpFormat) : undefined;
-
-    this.picker = new AirDatepicker(input, {
-      dateFormat: airFormat,
-      autoClose: true,
-      isMobile: window.matchMedia('(pointer: coarse)').matches,
-      selectedDates: initial ? [initial] : undefined,
-      buttons: ['today', 'clear'],
-      locale: locale as Partial<AirDatepickerLocale>,
-      onSelect: ({ date }) => {
-        const d = Array.isArray(date) ? date[0] : date;
-        if (!d) {
-          input.value = '';
-        }
-        host.setValue(input.value);
-      },
-    });
+    void this.initPicker();
   }
 
-  destroy(): void {
+  protected readValue(): string {
+    return this.textInput.value;
+  }
+
+  protected writeValue(value: string): void {
+    this.textInput.value = value;
+    if (this.picker) {
+      const phpFormat = this.resolvePhpFormat();
+      const parsed = value ? this.parseByFormat(value, phpFormat) : undefined;
+      this.picker.selectDate(parsed ?? [], { silent: true });
+    }
+  }
+
+  protected onReset(): void {
+    this.textInput.value = this.textInput.defaultValue;
+    if (this.picker) {
+      const parsed = this.textInput.value
+        ? this.parseByFormat(this.textInput.value, this.resolvePhpFormat())
+        : undefined;
+      this.picker.selectDate(parsed ?? [], { silent: true });
+    }
+  }
+
+  protected onDestroy(): void {
     this.picker?.destroy();
     this.picker = null;
+  }
+
+  private async initPicker(): Promise<void> {
+    const phpFormat = this.resolvePhpFormat();
+    const airFormat = phpFormatToAir(phpFormat);
+
+    try {
+      const { default: AirDatepicker } = await import('air-datepicker');
+      await import('air-datepicker/air-datepicker.css');
+      const enModule = await import('air-datepicker/locale/en');
+      const mod = enModule as { default?: Record<string, unknown> };
+      const locale = mod.default && 'days' in mod.default ? mod.default : mod.default ?? enModule;
+
+      const initial = this.textInput.value
+        ? this.parseByFormat(this.textInput.value, phpFormat)
+        : undefined;
+
+      this.picker = new AirDatepicker(this.textInput, {
+        dateFormat: airFormat,
+        autoClose: true,
+        isMobile: window.matchMedia('(pointer: coarse)').matches,
+        selectedDates: initial ? [initial] : undefined,
+        buttons: ['today', 'clear'],
+        locale: locale as Partial<AirDatepickerLocale>,
+        onSelect: ({ date }) => {
+          const d = Array.isArray(date) ? date[0] : date;
+          if (!d) {
+            this.textInput.value = '';
+          }
+          this.markDirty();
+          this.markTouched();
+          this.setValue(this.textInput.value);
+        },
+      });
+    } catch (err) {
+      console.warn(`[FormsModule] DatePickerField "${this.name}" failed to load air-datepicker:`, err);
+    }
+  }
+
+  private resolvePhpFormat(): string {
+    return this.wrapper
+      .querySelector<HTMLInputElement>('input[type="hidden"][name$="[dateFormat]"]')
+      ?.value ?? 'Y-m-d';
   }
 
   private parseByFormat(value: string, phpFormat: string): Date | undefined {

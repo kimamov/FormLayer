@@ -1,11 +1,10 @@
 import './style.css'
 
-
-
-
 import { formRegistry, registerDefaultValidators } from '../../src/index';
+import { registerComboboxPlugin } from '../../packages/plugin-combobox/src/index';
 
 registerDefaultValidators();
+registerComboboxPlugin();
 
 formRegistry.init({
   submitFn: async (ctx) => {

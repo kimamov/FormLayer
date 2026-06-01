@@ -18,6 +18,7 @@ import { SELECTORS } from './types';
 import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
 import { createField, createFieldAsync, isLazyFactory, type CustomFieldsMap } from './create-field';
+import { mergeFieldsMap } from './field-types';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -69,7 +70,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
     this.onFormInvalid = options?.onFormInvalid;
-    this.fieldsMap = options?.fieldsMap ?? {};
+    this.fieldsMap = mergeFieldsMap(options?.fieldsMap);
 
     this.formEl.setAttribute('novalidate', '');
 
