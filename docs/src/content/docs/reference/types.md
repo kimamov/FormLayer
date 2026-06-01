@@ -91,10 +91,41 @@ interface FieldControllerOptions {
 interface FormControllerOptions {
   fieldSelector?: string;
   fieldOptions?: FieldControllerOptions;
+  fieldsMap?: CustomFieldsMap;
   loadingState?: false | FormLoadingStateOptions;
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
   onFormInvalid?: (detail: FormEventDetail) => void;
 }
+```
+
+## FormField Interface
+
+The contract implemented by `FieldController` and custom field types. Any class conforming to this interface can participate in a `FormController`.
+
+```typescript
+interface FormField {
+  readonly name: string;
+  getState(): FieldState;
+  validate(): FieldValidationResult;
+  reset(): void;
+  destroy(): void;
+  setEnabled(enabled: boolean): void;
+  setServerErrors(errors: string[]): void;
+  connect(onChange: (state: FieldState) => void): void;
+  focus(): void;
+}
+```
+
+## Custom Field Types
+
+```typescript
+type FormFieldClass = new (wrapper: HTMLElement, options?: Record<string, unknown>) => FormField;
+
+type FormFieldFactory =
+  | FormFieldClass
+  | (() => Promise<{ default: FormFieldClass }>);
+
+type CustomFieldsMap = Record<string, FormFieldFactory>;
 ```
 
 ## Handler Types
@@ -119,6 +150,11 @@ interface FieldState {
   errors: string[];
 }
 
+interface FieldValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
 interface FormState {
   id: string;
   isValid: boolean;
@@ -130,38 +166,15 @@ interface FormState {
 
 ## Plugin Types
 
-```typescript
-interface FieldPlugin {
-  init(wrapper: HTMLElement, host: FieldPluginHost): void | Promise<void>;
-  destroy(): void;
-}
+### Form Plugins
 
+```typescript
 interface FormPlugin {
   init(formEl: HTMLFormElement, api: FormPluginHost): void | Promise<void>;
   destroy(): void;
 }
 
-type FieldPluginFactory = () => Promise<{ default: new () => FieldPlugin }>;
 type FormPluginFactory = () => Promise<{ default: new () => FormPlugin }>;
-```
-
-## Plugin Host Interfaces
-
-### FieldPluginHost
-
-Given to field plugins during `init()`:
-
-```typescript
-interface FieldPluginHost {
-  readonly name: string;
-  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-  readonly element: HTMLElement;
-  setValue(value: string): void;
-  validate(): void;
-  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-}
 ```
 
 ### FormPluginHost
@@ -179,6 +192,30 @@ interface FormPluginHost {
   off(event: 'field:*', handler: FieldEventHandler): void;
   off(event: 'form:*', handler: FormLevelEventHandler): void;
 }
+```
+
+### Field Plugins (legacy)
+
+Field plugins are superseded by the `FormField` interface and `fieldsMap`. Existing plugins using this interface will continue to work until migrated.
+
+```typescript
+interface FieldPlugin {
+  init(wrapper: HTMLElement, host: FieldPluginHost): void | Promise<void>;
+  destroy(): void;
+}
+
+interface FieldPluginHost {
+  readonly name: string;
+  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  readonly element: HTMLElement;
+  setValue(value: string): void;
+  validate(): void;
+  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+}
+
+type FieldPluginFactory = () => Promise<{ default: new () => FieldPlugin }>;
 ```
 
 ## Submit Types
@@ -207,7 +244,6 @@ type FormSubmitFunction = (context: FormSubmitContext) => Promise<void>;
 interface Typo3FormsOptions {
   disableDefaultValidators?: boolean;
   additionalValidators?: Validator[];
-  additionalFieldPlugins?: Record<string, FieldPluginFactory>;
   additionalFormPlugins?: FormPluginFactory[];
   onSubmit?: FormSubmitFunction;
   formSelector?: string;

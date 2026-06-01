@@ -12,8 +12,10 @@ Pass options as the third argument to `formRegistry.register()` or `formRegistry
 ```typescript
 interface FormControllerOptions {
   fieldSelector?: string;
-  /** Options applied to every field controller in this form. */
+  /** Options applied to every default FieldController in this form. */
   fieldOptions?: FieldControllerOptions;
+  /** Map `data-field-type` values to custom FormField implementations. */
+  fieldsMap?: CustomFieldsMap;
   loadingState?: false | FormLoadingStateOptions;
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
   /** Called when the form fails validation (client- or server-side). Complements form:invalid. */
@@ -26,7 +28,22 @@ interface FormLoadingStateOptions {
 }
 ```
 
-See [Loading State](/guides/loading-state/) for loading UI examples and [Error Rendering](/guides/error-rendering/) for field and form error display.
+### `fieldsMap`
+
+A `CustomFieldsMap` maps `data-field-type` attribute values to custom `FormField` implementations. Each entry can be a class (sync) or a lazy factory (async):
+
+```typescript
+import type { CustomFieldsMap } from 'formlayer';
+
+const fieldsMap: CustomFieldsMap = {
+  combobox: ComboboxField,
+  datepicker: () => import('./fields/datepicker'),
+};
+```
+
+When a `[data-form-field]` wrapper has a matching `data-field-type`, the custom class is instantiated instead of the default `FieldController`. Fields without a matching entry fall back to `FieldController`.
+
+See [Plugins](/guides/plugins/) for full usage examples and [Loading State](/guides/loading-state/) for loading UI.
 
 ## Properties
 
@@ -84,6 +101,30 @@ Destroys the controller, aborts listeners, disconnects the mutation observer, an
 
 ```typescript
 form.destroy();
+```
+
+### `addField(field)`
+
+Adds a pre-constructed `FormField` instance to the form. If a field with the same name exists, the old one is destroyed first.
+
+```typescript
+form.addField(myCustomField);
+```
+
+### `addFieldFromElement(wrapper, options?)`
+
+Creates and adds a field from a `[data-form-field]` wrapper element. Respects the form's `fieldsMap` when resolving the field type.
+
+```typescript
+const field = form.addFieldFromElement(wrapperEl);
+```
+
+### `removeField(name)`
+
+Destroys and removes a field by name.
+
+```typescript
+form.removeField('phone');
 ```
 
 ### `on(event, handler)` / `once(event, handler)` / `off(event, handler)`

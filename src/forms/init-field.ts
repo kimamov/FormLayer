@@ -1,12 +1,7 @@
-import type { FieldPlugin, FormField, FormFieldClass, FormFieldFactory } from './types';
+import type { FormField, FormFieldClass, FormFieldFactory } from './types';
 import { FieldController } from './field-controller';
 import type { FieldControllerOptions } from './field-controller';
 import { isLazyFactory } from './create-field';
-
-export type PluginArg =
-  | string                       // registry key, e.g. "combobox"
-  | (new () => FieldPlugin)      // class reference, e.g. ComboboxPlugin
-  | FieldPlugin;                 // pre-built instance
 
 export interface InitFieldOptions extends FieldControllerOptions {
   field?: FormFieldClass

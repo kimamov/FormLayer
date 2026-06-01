@@ -20,7 +20,7 @@ formRegistry.init(
   submitFn: FormSubmitFunction,
   root?: ParentNode,           // default: document
   formSelector?: string,       // default: 'form[id]'
-  controllerOptions?: FormControllerOptions  // fieldSelector, fieldOptions, loadingState, onLoadingStateChange, onFormInvalid
+  controllerOptions?: FormControllerOptions  // fieldSelector, fieldOptions, fieldsMap, loadingState, etc.
 ): void
 ```
 
@@ -72,22 +72,22 @@ formRegistry.registerValidator({
 });
 ```
 
-### `registerPlugin(type, factory)` / `unregisterPlugin(type)` / `hasPlugin(type)`
-
-Manage the field plugin registry.
-
-```typescript
-formRegistry.registerPlugin('slider', () => import('./plugins/slider'));
-formRegistry.hasPlugin('slider');    // true
-formRegistry.unregisterPlugin('slider');
-```
-
 ### `registerFormPlugin(factory)`
 
 Registers a form-level plugin factory. Applied to all forms registered after this call.
 
 ```typescript
 formRegistry.registerFormPlugin(() => import('./plugins/analytics'));
+```
+
+### `registerPlugin(type, factory)` / `unregisterPlugin(type)` / `hasPlugin(type)` (legacy)
+
+Manage the legacy field plugin registry. Prefer using `fieldsMap` in `FormControllerOptions` for custom field types — see [Plugins](/guides/plugins/).
+
+```typescript
+formRegistry.registerPlugin('slider', () => import('./plugins/slider'));
+formRegistry.hasPlugin('slider');    // true
+formRegistry.unregisterPlugin('slider');
 ```
 
 ## Global Access

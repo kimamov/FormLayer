@@ -36,7 +36,7 @@ export interface FormControllerOptions {
    */
   onFormInvalid?: (detail: FormEventDetail) => void;
 
-  fieldsMap: CustomFieldsMap
+  fieldsMap?: CustomFieldsMap
 }
 
 export class FormController implements FormControllerApi, FormPluginHost {

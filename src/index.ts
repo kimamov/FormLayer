@@ -7,8 +7,10 @@ export {
   runValidators,
   runValidatorsAsync,
 } from './forms/validators';
-export { initField } from './forms/init-field';
-export type { InitFieldOptions, PluginArg } from './forms/init-field';
+export { initField, initFieldAsync } from './forms/init-field';
+export type { InitFieldOptions } from './forms/init-field';
+export { createField, createFieldAsync, isLazyFactory } from './forms/create-field';
+export type { CustomFieldsMap, CreateFieldOptions } from './forms/create-field';
 
 export type {
   FieldPlugin,
@@ -17,6 +19,9 @@ export type {
   FormPlugin,
   FormPluginFactory,
   FormPluginHost,
+  FormField,
+  FormFieldClass,
+  FormFieldFactory,
   ClientVariant,
   FormSubmitContext,
   FormSubmitActions,
@@ -24,6 +29,7 @@ export type {
   FormControllerApi,
   FormState,
   FieldState,
+  FieldValidationResult,
   FormEventType,
   RegistryEventType,
   FieldEventDetail,
@@ -40,7 +46,8 @@ export type {
   FieldControllerEventHandler,
   FormLoadingStateDetail,
   FormLoadingStateOptions,
+  AddFieldFromElementOptions,
 } from './forms/types';
 
-export type { FieldControllerOptions, FieldErrorRenderContext, FieldValidationResult } from './forms/field-controller';
+export type { FieldControllerOptions, FieldErrorRenderContext } from './forms/field-controller';
 export type { FormControllerOptions } from './forms/form-controller';

@@ -3,7 +3,7 @@ title: FieldController
 description: API reference for individual field controllers.
 ---
 
-A `FieldController` wraps a single form field (a `[data-form-field]` wrapper containing an `input`, `select`, or `textarea`). Get one via `initField()` or interact with fields through the parent form controller.
+A `FieldController` wraps a single form field (a `[data-form-field]` wrapper containing an `input`, `select`, or `textarea`). It implements the `FormField` interface. Get one via `initField()` or interact with fields through the parent form controller.
 
 ## Constructor
 
@@ -18,13 +18,21 @@ Usually created via `initField()` rather than directly.
 | Property | Type | Description |
 |----------|------|-------------|
 | `name` | `string` | The `data-form-field` attribute value |
-| `state` | `FieldState` | Cloned snapshot of current state |
 | `element` | `HTMLElement` | The wrapper element |
 | `inputElement` | `HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement` | The active input |
 | `fieldType` | `string \| null` | The `data-field-type` attribute, or null |
 | `enabled` | `boolean` | Whether the field is enabled |
 
 ## Methods
+
+### `getState()`
+
+Returns a snapshot of the current field state.
+
+```typescript
+const state: FieldState = ctrl.getState();
+// { name, value, isValid, isDirty, isTouched, errors }
+```
 
 ### `setValue(value)`
 
@@ -57,15 +65,15 @@ Restores the input to its default DOM value (`defaultValue`, `defaultChecked`, `
 
 ### `destroy()`
 
-Destroys the plugin, aborts listeners, restores native validation attributes.
+Aborts listeners and restores native validation attributes.
 
-### `attachPlugin(plugin)`
+### `connect(onChange)`
 
-Attaches a `FieldPlugin`. Destroys any previously attached plugin first. Skipped if the controller is already destroyed.
+Wires field state changes into a parent callback (used internally by `FormController`). For standalone use, prefer `on('change', ...)`.
 
 ### `replaceInput(newInput)`
 
-Allows a plugin to swap the active input element (e.g., combobox hides the select and uses a text input).
+Swaps the active input element (e.g., a custom field type hides the select and uses a text input).
 
 ### `on(event, handler)` / `once(event, handler)` / `off(event, handler)`
 

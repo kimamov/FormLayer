@@ -1,4 +1,4 @@
-import type { FieldState, ValidatorRule, FieldPlugin, FieldPluginHost, FieldControllerEventType, FieldControllerEventHandler, FormField } from './types';
+import type { FieldState, FieldValidationResult, ValidatorRule, FieldControllerEventType, FieldControllerEventHandler, FormField } from './types';
 import { CSS_CLASSES, SELECTORS, DEBOUNCE_MS } from './types';
 import { runValidators } from './validators/index';
 
@@ -42,7 +42,6 @@ export class FieldController implements FormField {
   private _state: FieldState;
   private _enabled = true;
   private onChange: ((state: FieldState) => void) | null = null;
-  private plugin: FieldPlugin | null = null;
   private _serverErrors: string[] = [];
   private _serverErrorValue: string | null = null;
   private readonly fieldListeners = new Map<FieldControllerEventType, Set<FieldControllerEventHandler>>();
@@ -268,8 +267,6 @@ export class FieldController implements FormField {
   }
 
   destroy(): void {
-    this.plugin?.destroy();
-    this.plugin = null;
     this.abortController.abort();
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.restoreNativeValidation();
@@ -470,9 +467,4 @@ export class FieldController implements FormField {
     div.textContent = str;
     return div.innerHTML;
   }
-}
-
-export interface FieldValidationResult {
-  isValid: boolean;
-  errors: string[];
 }
