@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FieldController } from '../src/forms/field-controller';
-import type { FieldPlugin, FieldPluginHost } from '../src/forms/types';
 import { registerDefaultValidators } from '../src/forms/validators';
 
 function createFieldHTML(opts: {
@@ -66,7 +65,7 @@ describe('FieldController', () => {
     it('sets initial state correctly', () => {
       const wrapper = createFieldHTML({ name: 'email', value: 'test@test.com' });
       const ctrl = new FieldController(wrapper);
-      const state = ctrl.state;
+      const state = ctrl.getState();
 
       expect(state.name).toBe('email');
       expect(state.value).toBe('test@test.com');
@@ -122,7 +121,7 @@ describe('FieldController', () => {
       const result = ctrl.validate();
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('This field is required.');
-      expect(ctrl.state.isValid).toBe(false);
+      expect(ctrl.getState().isValid).toBe(false);
     });
 
     it('validates passing NotEmpty rule', () => {
@@ -297,10 +296,10 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
 
       ctrl.setValue('Alice');
-      expect(ctrl.state.value).toBe('Alice');
-      expect(ctrl.state.isDirty).toBe(true);
-      expect(ctrl.state.isTouched).toBe(true);
-      expect(ctrl.state.isValid).toBe(true);
+      expect(ctrl.getState().value).toBe('Alice');
+      expect(ctrl.getState().isDirty).toBe(true);
+      expect(ctrl.getState().isTouched).toBe(true);
+      expect(ctrl.getState().isValid).toBe(true);
     });
 
     it('calls change callback after setValue', () => {
@@ -308,7 +307,7 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
       const cb = vi.fn();
 
-      ctrl.setChangeCallback(cb);
+      ctrl.connect(cb);
       ctrl.setValue('hello');
 
       expect(cb).toHaveBeenCalledOnce();
@@ -346,18 +345,18 @@ describe('FieldController', () => {
       });
       const ctrl = new FieldController(wrapper);
       ctrl.validate();
-      expect(ctrl.state.isValid).toBe(false);
+      expect(ctrl.getState().isValid).toBe(false);
 
       ctrl.setEnabled(false);
-      expect(ctrl.state.isValid).toBe(true);
-      expect(ctrl.state.errors).toEqual([]);
+      expect(ctrl.getState().isValid).toBe(true);
+      expect(ctrl.getState().errors).toEqual([]);
     });
 
     it('is idempotent when called with same value', () => {
       const wrapper = createFieldHTML({ name: 'stable' });
       const ctrl = new FieldController(wrapper);
       const cb = vi.fn();
-      ctrl.setChangeCallback(cb);
+      ctrl.connect(cb);
 
       ctrl.setEnabled(true);
       expect(cb).not.toHaveBeenCalled();
@@ -370,9 +369,9 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
 
       ctrl.setServerErrors(['This email is already taken.']);
-      expect(ctrl.state.isValid).toBe(false);
-      expect(ctrl.state.errors).toContain('This email is already taken.');
-      expect(ctrl.state.isTouched).toBe(true);
+      expect(ctrl.getState().isValid).toBe(false);
+      expect(ctrl.getState().errors).toContain('This email is already taken.');
+      expect(ctrl.getState().isTouched).toBe(true);
     });
 
     it('server errors persist until value changes', () => {
@@ -406,7 +405,7 @@ describe('FieldController', () => {
       ctrl.validate();
 
       ctrl.reset();
-      const state = ctrl.state;
+      const state = ctrl.getState();
       expect(state.isDirty).toBe(false);
       expect(state.isTouched).toBe(false);
       expect(state.isValid).toBe(true);
@@ -431,48 +430,13 @@ describe('FieldController', () => {
     });
   });
 
-  describe('plugin attachment', () => {
-    it('attaches and initializes a plugin', async () => {
-      const wrapper = createFieldHTML({ name: 'combo', fieldType: 'combobox' });
-      const ctrl = new FieldController(wrapper);
-
-      const initSpy = vi.fn();
-      const destroySpy = vi.fn();
-      const plugin: FieldPlugin = {
-        init: initSpy,
-        destroy: destroySpy,
-      };
-
-      await ctrl.attachPlugin(plugin);
-
-      expect(initSpy).toHaveBeenCalledOnce();
-      expect(initSpy).toHaveBeenCalledWith(wrapper, ctrl);
-    });
-
-    it('destroys plugin on controller destroy', async () => {
-      const wrapper = createFieldHTML({ name: 'combo' });
-      const ctrl = new FieldController(wrapper);
-
-      const destroySpy = vi.fn();
-      const plugin: FieldPlugin = {
-        init: vi.fn(),
-        destroy: destroySpy,
-      };
-
-      await ctrl.attachPlugin(plugin);
-      ctrl.destroy();
-
-      expect(destroySpy).toHaveBeenCalledOnce();
-    });
-  });
-
   describe('DOM event handling', () => {
     it('marks dirty on input event', async () => {
       const wrapper = createFieldHTML({ name: 'typing' });
       const ctrl = new FieldController(wrapper);
 
       ctrl.inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-      expect(ctrl.state.isDirty).toBe(true);
+      expect(ctrl.getState().isDirty).toBe(true);
     });
 
     it('marks touched and validates on blur', () => {
@@ -483,8 +447,8 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
 
       ctrl.inputElement.dispatchEvent(new Event('blur'));
-      expect(ctrl.state.isTouched).toBe(true);
-      expect(ctrl.state.isValid).toBe(false);
+      expect(ctrl.getState().isTouched).toBe(true);
+      expect(ctrl.getState().isValid).toBe(false);
     });
 
     it('validates on change event', () => {
@@ -496,8 +460,8 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
 
       ctrl.inputElement.dispatchEvent(new Event('change'));
-      expect(ctrl.state.isTouched).toBe(true);
-      expect(ctrl.state.isDirty).toBe(true);
+      expect(ctrl.getState().isTouched).toBe(true);
+      expect(ctrl.getState().isDirty).toBe(true);
     });
   });
 
@@ -514,8 +478,8 @@ describe('FieldController', () => {
       select.value = 'a';
       select.dispatchEvent(new Event('change'));
 
-      expect(ctrl.state.value).toBe('a');
-      expect(ctrl.state.isValid).toBe(true);
+      expect(ctrl.getState().value).toBe('a');
+      expect(ctrl.getState().isValid).toBe(true);
     });
   });
 
@@ -527,7 +491,7 @@ describe('FieldController', () => {
         value: 'yes',
       });
       const ctrl = new FieldController(wrapper);
-      expect(ctrl.state.value).toBe('yes');
+      expect(ctrl.getState().value).toBe('yes');
     });
 
     it('reads empty for unchecked checkbox', () => {
@@ -536,7 +500,7 @@ describe('FieldController', () => {
         type: 'checkbox',
       });
       const ctrl = new FieldController(wrapper);
-      expect(ctrl.state.value).toBe('');
+      expect(ctrl.getState().value).toBe('');
     });
   });
 

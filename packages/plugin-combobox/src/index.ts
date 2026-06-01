@@ -1,14 +1,14 @@
-import { registerPlugin } from 'formlayer';
-import type { FieldPluginFactory } from 'formlayer';
+import { registerFieldType } from 'formlayer';
+import type { FormFieldFactory } from 'formlayer';
 
-export { default as ComboboxPlugin } from './combobox';
+export { default as ComboboxField } from './combobox';
 export { default } from './combobox';
 
-export const COMBOBOX_PLUGIN_TYPE = 'combobox';
+export const COMBOBOX_FIELD_TYPE = 'combobox';
 
-export const comboboxPluginFactory: FieldPluginFactory = () => import('./combobox');
+export const comboboxFieldFactory: FormFieldFactory = () => import('./combobox');
 
-/** Register the combobox field plugin (`data-field-type="combobox"`). */
-export function registerComboboxPlugin(type: string = COMBOBOX_PLUGIN_TYPE): void {
-  registerPlugin(type, comboboxPluginFactory);
+/** Register the combobox field type (`data-field-type="combobox"`). */
+export function registerComboboxPlugin(type: string = COMBOBOX_FIELD_TYPE): void {
+  registerFieldType(type, comboboxFieldFactory);
 }

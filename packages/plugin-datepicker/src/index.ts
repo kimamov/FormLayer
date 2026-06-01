@@ -1,14 +1,14 @@
-import { registerPlugin } from 'formlayer';
-import type { FieldPluginFactory } from 'formlayer';
+import { registerFieldType } from 'formlayer';
+import type { FormFieldFactory } from 'formlayer';
 
-export { default as DatePickerPlugin } from './datepicker';
+export { default as DatePickerField } from './datepicker';
 export { default } from './datepicker';
 
-export const DATEPICKER_PLUGIN_TYPE = 'datepicker';
+export const DATEPICKER_FIELD_TYPE = 'datepicker';
 
-export const datepickerPluginFactory: FieldPluginFactory = () => import('./datepicker');
+export const datepickerFieldFactory: FormFieldFactory = () => import('./datepicker');
 
-/** Register the datepicker field plugin (`data-field-type="datepicker"`). */
-export function registerDatepickerPlugin(type: string = DATEPICKER_PLUGIN_TYPE): void {
-  registerPlugin(type, datepickerPluginFactory);
+/** Register the datepicker field type (`data-field-type="datepicker"`). */
+export function registerDatepickerPlugin(type: string = DATEPICKER_FIELD_TYPE): void {
+  registerFieldType(type, datepickerFieldFactory);
 }

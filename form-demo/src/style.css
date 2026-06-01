@@ -273,6 +273,137 @@ code {
   }
 }
 
+/* Form fields */
+form {
+  max-width: 420px;
+  margin: 0 auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 0 20px 40px;
+}
+
+[data-form-field] label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--text-h);
+  font-size: 0.95rem;
+}
+
+[data-form-field] input,
+[data-form-field] textarea,
+[data-form-field] select,
+.combobox-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+}
+
+[data-form-field] input.is-invalid,
+[data-form-field] textarea.is-invalid,
+.combobox-input.is-invalid {
+  border-color: #dc3545;
+}
+
+.invalid-feedback {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  color: #dc3545;
+  min-height: 1.2em;
+}
+
+button[type="submit"] {
+  align-self: flex-start;
+  padding: 0.55rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  opacity: 0.9;
+}
+
+button[type="submit"][data-loading] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Combobox */
+.combobox {
+  position: relative;
+}
+
+.combobox-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.combobox-input {
+  padding-right: 2.25rem;
+}
+
+.combobox-toggle {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.combobox-listbox {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.combobox-option {
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.combobox-option[aria-selected="true"],
+.combobox-option:hover {
+  background: var(--accent-bg);
+}
+
+.combobox-option.is-selected {
+  font-weight: 500;
+}
+
+.combobox-no-results {
+  padding: 0.45rem 0.65rem;
+  color: var(--text);
+  font-style: italic;
+}
+
 .ticks {
   position: relative;
   width: 100%;

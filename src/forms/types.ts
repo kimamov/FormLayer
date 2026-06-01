@@ -22,6 +22,52 @@ export interface FieldState {
   errors: string[];
 }
 
+export interface FieldValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+/** Form participation contract — implemented by FieldController and custom field types. */
+export interface FormField {
+  readonly name: string;
+  getState(): FieldState;
+  validate(): FieldValidationResult;
+  reset(): void;
+  destroy(): void;
+  setEnabled(enabled: boolean): void;
+  setServerErrors(errors: string[]): void;
+  /** Wire field state changes into the parent form (no-op for standalone use). */
+  connect(onChange: (state: FieldState) => void): void;
+  focus(): void;
+  /** optional fields that can be usefull */
+}
+
+/**
+ * DOM-backed fields with a wrapper, native control, and optional field events.
+ */
+export interface DomFormField extends FormField {
+  readonly element: HTMLElement;
+  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  readonly fieldType: string | null;
+  readonly enabled: boolean;
+  setValue(value: string): void;
+  /** Swap the active control; optional — only needed when the focus target changes. */
+  replaceInput?(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+}
+
+export type FormFieldClass = new (
+  wrapper: HTMLElement,
+  options?: import('./field-options').FieldOptions,
+) => FormField;
+
+export type FormFieldFactory =
+  | FormFieldClass
+  | (() => Promise<{ default: FormFieldClass }>);
+
+
 export interface FormState {
   id: string;
   isValid: boolean;
@@ -94,11 +140,6 @@ export interface FormControllerApi {
   off(event: FormEvents, handler: FormLevelEventHandler): void;
 }
 
-export interface FieldPlugin {
-  init(wrapper: HTMLElement, fieldController: FieldPluginHost): void | Promise<void>;
-  destroy(): void;
-}
-
 export interface FormPlugin {
   init(formEl: HTMLFormElement, api: FormPluginHost): void | Promise<void>;
   destroy(): void;
@@ -123,18 +164,6 @@ export interface ClientVariant {
 export type FieldControllerEventType = 'change' | 'valid' | 'invalid';
 export type FieldControllerEventHandler = (state: FieldState) => void;
 
-export interface FieldPluginHost {
-  readonly name: string;
-  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-  readonly element: HTMLElement;
-  setValue(value: string): void;
-  validate(): void;
-  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-}
-
-export type FieldPluginFactory = () => Promise<{ default: new () => FieldPlugin }>;
 export type FormPluginFactory = () => Promise<{ default: new () => FormPlugin }>;
 
 export const CSS_CLASSES = {

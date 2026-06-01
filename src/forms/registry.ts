@@ -1,10 +1,14 @@
-import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FieldPluginFactory, FormPluginFactory, FormSubmitFunction } from './types';
+import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FormPluginFactory, FormSubmitFunction } from './types';
 import { FormController } from './form-controller';
 import type { FormControllerOptions } from './form-controller';
 import { EventBus } from './events';
-import { registerValidator } from './validators/index';
-import { registerPlugin, unregisterPlugin, hasPlugin } from './plugins/index';
-import type { Validator } from './types';
+
+export interface RegistryInitArguments {
+  submitFn: FormSubmitFunction;
+  root?: ParentNode;
+  formSelector?: string;
+  controllerOptions?: FormControllerOptions;
+}
 
 export class FormRegistry {
   private readonly forms = new Map<string, FormController>();
@@ -12,7 +16,12 @@ export class FormRegistry {
   private readonly eventBus = new EventBus();
   private _initialized = false;
 
-  init(submitFn: FormSubmitFunction, root: ParentNode = document, formSelector = 'form[id]', controllerOptions?: FormControllerOptions): void {
+  init({
+    submitFn,
+    root = document,
+    formSelector = 'form[id]',
+    controllerOptions,
+  }: RegistryInitArguments): void {
     this._initialized = true;
     const formElements = root.querySelectorAll<HTMLFormElement>(formSelector);
     formElements.forEach((formEl) => this.register(formEl, submitFn, controllerOptions));
@@ -66,22 +75,6 @@ export class FormRegistry {
 
   off(event: RegistryEventType, handler: RegistryEventHandler): void {
     this.eventBus.off(event, handler);
-  }
-
-  registerValidator(validator: Validator): void {
-    registerValidator(validator);
-  }
-
-  registerPlugin(type: string, factory: FieldPluginFactory): void {
-    registerPlugin(type, factory);
-  }
-
-  unregisterPlugin(type: string): boolean {
-    return unregisterPlugin(type);
-  }
-
-  hasPlugin(type: string): boolean {
-    return hasPlugin(type);
   }
 
   registerFormPlugin(factory: FormPluginFactory): void {

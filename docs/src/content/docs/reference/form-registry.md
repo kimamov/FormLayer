@@ -9,19 +9,41 @@ The `FormRegistry` manages all form controllers. Access via the exported `formRe
 import { formRegistry } from 'formlayer';
 ```
 
+## Single-form apps
+
+For one form, skip the registry:
+
+```typescript
+import { createFormController, registerDefaultValidators } from 'formlayer';
+
+registerDefaultValidators();
+const form = createFormController(document.getElementById('contact')!, submitFn);
+```
+
+## Global validators and field types
+
+Register globally via module-level APIs (not on the registry):
+
+```typescript
+import { registerValidator, registerFieldType } from 'formlayer';
+
+registerValidator({ type: 'MyValidator', validate(value, options) { ... } });
+registerFieldType('slider', () => import('./fields/slider'));
+```
+
 ## Methods
 
-### `init(submitFn, root?, formSelector?, controllerOptions?)`
+### `init(options)`
 
 Discovers and registers all matching forms.
 
 ```typescript
-formRegistry.init(
+formRegistry.init({
   submitFn: FormSubmitFunction,
-  root?: ParentNode,           // default: document
-  formSelector?: string,       // default: 'form[id]'
-  controllerOptions?: FormControllerOptions  // fieldSelector, fieldOptions, loadingState, onLoadingStateChange, onFormInvalid
-): void
+  root?: ParentNode,              // default: document
+  formSelector?: string,          // default: 'form[id]'
+  controllerOptions?: FormControllerOptions,
+}): void
 ```
 
 ### `register(formEl, submitFn, controllerOptions?)`
@@ -59,27 +81,6 @@ Subscribe to registry-level events.
 ```typescript
 formRegistry.on('form:registered', ({ formId }) => { ... });
 formRegistry.on('form:unregistered', ({ formId }) => { ... });
-```
-
-### `registerValidator(validator)`
-
-Registers a validator globally.
-
-```typescript
-formRegistry.registerValidator({
-  type: 'MyValidator',
-  validate(value, options) { ... }
-});
-```
-
-### `registerPlugin(type, factory)` / `unregisterPlugin(type)` / `hasPlugin(type)`
-
-Manage the field plugin registry.
-
-```typescript
-formRegistry.registerPlugin('slider', () => import('./plugins/slider'));
-formRegistry.hasPlugin('slider');    // true
-formRegistry.unregisterPlugin('slider');
 ```
 
 ### `registerFormPlugin(factory)`

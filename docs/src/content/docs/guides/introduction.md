@@ -23,14 +23,18 @@ Your server renders standard `<form>` HTML. FormLayer enhances it. If JavaScript
 
 ```
 ┌─────────────────────────────────────────────┐
-│  FormRegistry (singleton)                   │
-│  ├── FormController (per <form>)            │
-│  │   ├── FieldController (per field)        │
-│  │   │   ├── Validators (data-validate)     │
-│  │   │   └── FieldPlugin (data-field-type)  │
-│  │   ├── FormPlugin (e.g. client-variants)  │
-│  │   └── EventBus (form/field events)       │
-│  └── EventBus (registry events)             │
+│  Form path                                  │
+│  FormRegistry (optional) / createFormController│
+│  └── FormController (per <form>)            │
+│      ├── createField → FieldController      │
+│      ├── createField → custom FormField     │
+│      │   (via fieldsMap / data-field-type)  │
+│      ├── FormPlugin (e.g. client-variants)  │
+│      └── EventBus (form/field events)       │
+├─────────────────────────────────────────────┤
+│  Standalone path (no registry)              │
+│  initField / initFieldAsync                 │
+│  └── FieldController or explicit { field }  │
 └─────────────────────────────────────────────┘
 ```
 
@@ -51,7 +55,9 @@ A **form** is any `<form>` element with an `id`. A **field** is any element insi
 
 ### The Registry
 
-The `FormRegistry` is the entry point. It discovers forms in the DOM, creates controllers, and manages the lifecycle. Access it via the exported `formRegistry` singleton or through `initTypo3Forms()`.
+The `FormRegistry` discovers forms in the DOM and manages their lifecycle — useful for multi-form pages and TYPO3 remounting. For a single form, you can use `createFormController()` directly without the registry.
+
+Standalone fields outside a form use `initField()` — see [Standalone Fields](/guides/standalone-fields/).
 
 ### Progressive Enhancement
 

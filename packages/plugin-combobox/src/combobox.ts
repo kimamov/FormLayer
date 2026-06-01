@@ -1,4 +1,4 @@
-import type { FieldPlugin, FieldPluginHost } from 'formlayer';
+import { AbstractDomFormField } from 'formlayer';
 
 interface ComboboxOption {
   value: string;
@@ -6,56 +6,76 @@ interface ComboboxOption {
 }
 
 /**
- * Accessible combobox (ARIA 1.2 pattern) that progressively enhances a <select>.
+ * Accessible combobox (ARIA 1.2) built on AbstractDomFormField.
  *
- * The original <select> is hidden and kept in sync so server-side form
- * submission still works. The combobox renders a text input with a
- * filterable listbox popup.
+ * The native <select> stays in the DOM (hidden) for form submission;
+ * the visible text input + listbox handle interaction and validation UI.
  */
-export default class ComboboxPlugin implements FieldPlugin {
-  private host!: FieldPluginHost;
+export default class ComboboxField extends AbstractDomFormField {
   private select!: HTMLSelectElement;
-  private options: ComboboxOption[] = [];
+  private comboboxOptions: ComboboxOption[] = [];
 
   private root!: HTMLElement;
-  private input!: HTMLInputElement;
+  private textInput!: HTMLInputElement;
   private listbox!: HTMLElement;
   private toggle!: HTMLButtonElement;
 
   private activeIndex = -1;
   private isOpen = false;
   private filteredOptions: ComboboxOption[] = [];
-  private abortController = new AbortController();
 
-  async init(wrapper: HTMLElement, host: FieldPluginHost): Promise<void> {
-    this.host = host;
-
-    const select = wrapper.querySelector('select');
-    if (!select) return;
+  protected mount(): void {
+    const select = this.wrapper.querySelector('select');
+    if (!select) {
+      throw new Error(`[FormsModule] ComboboxField "${this.name}" requires a <select>`);
+    }
     this.select = select;
 
-    this.options = Array.from(select.options)
+    this.comboboxOptions = Array.from(select.options)
       .filter((o) => o.value !== '')
       .map((o) => ({ value: o.value, label: o.textContent?.trim() ?? o.value }));
-    this.filteredOptions = [...this.options];
+    this.filteredOptions = [...this.comboboxOptions];
 
-    this.buildDOM(wrapper);
+    this.buildDOM();
     this.syncFromSelect();
     this.bind();
   }
 
-  destroy(): void {
-    this.abortController.abort();
-    if (this.select) {
-      this.select.hidden = false;
-      this.select.removeAttribute('tabindex');
-      this.select.removeAttribute('aria-hidden');
+  protected readValue(): string {
+    return this.select.value;
+  }
+
+  protected writeValue(value: string): void {
+    this.select.value = value;
+    const opt = this.comboboxOptions.find((o) => o.value === value);
+    this.textInput.value = opt?.label ?? '';
+    this.filteredOptions = [...this.comboboxOptions];
+    this.renderOptions();
+  }
+
+  protected focusControl(): void {
+    this.textInput.focus();
+  }
+
+  protected onReset(): void {
+    for (const opt of Array.from(this.select.options)) {
+      opt.selected = opt.defaultSelected;
     }
+    this.syncFromSelect();
+    this.filteredOptions = [...this.comboboxOptions];
+    this.renderOptions();
+    this.close();
+  }
+
+  protected onDestroy(): void {
+    this.select.hidden = false;
+    this.select.removeAttribute('tabindex');
+    this.select.removeAttribute('aria-hidden');
     this.root?.remove();
   }
 
-  private buildDOM(wrapper: HTMLElement): void {
-    const id = this.select.id || `cb-${this.host.name}`;
+  private buildDOM(): void {
+    const id = this.select.id || `cb-${this.name}`;
 
     this.select.hidden = true;
     this.select.setAttribute('tabindex', '-1');
@@ -64,21 +84,25 @@ export default class ComboboxPlugin implements FieldPlugin {
     this.root = document.createElement('div');
     this.root.className = 'combobox';
 
-    this.input = document.createElement('input');
-    this.input.type = 'text';
-    this.input.className = 'combobox-input';
-    this.input.setAttribute('role', 'combobox');
-    this.input.setAttribute('aria-autocomplete', 'list');
-    this.input.setAttribute('aria-expanded', 'false');
-    this.input.setAttribute('aria-controls', `${id}-listbox`);
-    this.input.setAttribute('aria-haspopup', 'listbox');
-    this.input.setAttribute('autocomplete', 'off');
+    this.textInput = document.createElement('input');
+    this.textInput.type = 'text';
+    this.textInput.id = id;
+    if (this.select.id) {
+      this.select.removeAttribute('id');
+    }
+    this.textInput.className = 'combobox-input';
+    this.textInput.setAttribute('role', 'combobox');
+    this.textInput.setAttribute('aria-autocomplete', 'list');
+    this.textInput.setAttribute('aria-expanded', 'false');
+    this.textInput.setAttribute('aria-controls', `${id}-listbox`);
+    this.textInput.setAttribute('aria-haspopup', 'listbox');
+    this.textInput.setAttribute('autocomplete', 'off');
 
-    const label = wrapper.querySelector('label');
+    const label = this.wrapper.querySelector('label');
     if (label) {
       const labelId = label.id || `${id}-label`;
       label.id = labelId;
-      this.input.setAttribute('aria-labelledby', labelId);
+      this.textInput.setAttribute('aria-labelledby', labelId);
     }
 
     this.toggle = document.createElement('button');
@@ -98,25 +122,25 @@ export default class ComboboxPlugin implements FieldPlugin {
 
     const inputWrap = document.createElement('div');
     inputWrap.className = 'combobox-input-wrap';
-    inputWrap.append(this.input, this.toggle);
+    inputWrap.append(this.textInput, this.toggle);
 
     this.root.append(inputWrap, this.listbox);
     this.select.insertAdjacentElement('afterend', this.root);
 
-    this.host.replaceInput(this.input);
+    this.setControlElement(this.textInput);
   }
 
   private bind(): void {
-    const signal = this.abortController.signal;
+    const signal = this.signal;
 
-    this.input.addEventListener('input', () => this.onInput(), { signal });
-    this.input.addEventListener('keydown', (e) => this.onKeydown(e), { signal });
-    this.input.addEventListener('focus', () => this.open(), { signal });
-    this.input.addEventListener('blur', (e) => this.onBlur(e), { signal });
+    this.textInput.addEventListener('input', () => this.onInput(), { signal });
+    this.textInput.addEventListener('keydown', (e) => this.onKeydown(e), { signal });
+    this.textInput.addEventListener('focus', () => this.open(), { signal });
+    this.textInput.addEventListener('blur', (e) => this.onBlur(e), { signal });
     this.toggle.addEventListener('mousedown', (e) => {
       e.preventDefault();
       this.isOpen ? this.close() : this.open();
-      this.input.focus();
+      this.textInput.focus();
     }, { signal });
     this.listbox.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -126,10 +150,11 @@ export default class ComboboxPlugin implements FieldPlugin {
   }
 
   private onInput(): void {
-    const query = this.input.value.toLowerCase().trim();
+    this.markDirty();
+    const query = this.textInput.value.toLowerCase().trim();
     this.filteredOptions = query
-      ? this.options.filter((o) => o.label.toLowerCase().includes(query))
-      : [...this.options];
+      ? this.comboboxOptions.filter((o) => o.label.toLowerCase().includes(query))
+      : [...this.comboboxOptions];
     this.activeIndex = -1;
     this.renderOptions();
     this.open();
@@ -182,16 +207,18 @@ export default class ComboboxPlugin implements FieldPlugin {
   }
 
   private commitInputValue(): void {
-    const text = this.input.value.trim().toLowerCase();
-    const match = this.options.find((o) => o.label.toLowerCase() === text);
+    this.markTouched();
+    const text = this.textInput.value.trim().toLowerCase();
+    const match = this.comboboxOptions.find((o) => o.label.toLowerCase() === text);
     if (match) {
       this.applySelection(match);
     } else if (text === '') {
-      this.select.value = '';
-      this.host.setValue('');
+      this.setValue('');
     } else {
-      const prev = this.options.find((o) => o.value === this.select.value);
-      this.input.value = prev?.label ?? '';
+      const prev = this.comboboxOptions.find((o) => o.value === this.select.value);
+      this.textInput.value = prev?.label ?? '';
+      this.validate();
+      this.notifyChange();
     }
   }
 
@@ -199,33 +226,31 @@ export default class ComboboxPlugin implements FieldPlugin {
     if (this.isOpen) return;
     this.isOpen = true;
     this.listbox.hidden = false;
-    this.input.setAttribute('aria-expanded', 'true');
+    this.textInput.setAttribute('aria-expanded', 'true');
   }
 
   private close(): void {
     if (!this.isOpen) return;
     this.isOpen = false;
     this.listbox.hidden = true;
-    this.input.setAttribute('aria-expanded', 'false');
-    this.input.removeAttribute('aria-activedescendant');
+    this.textInput.setAttribute('aria-expanded', 'false');
+    this.textInput.removeAttribute('aria-activedescendant');
     this.activeIndex = -1;
     this.clearActiveDescendant();
   }
 
   private selectOption(value: string): void {
-    const opt = this.options.find((o) => o.value === value);
+    const opt = this.comboboxOptions.find((o) => o.value === value);
     if (!opt) return;
     this.applySelection(opt);
     this.close();
-    this.input.focus();
+    this.textInput.focus();
   }
 
   private applySelection(opt: ComboboxOption): void {
-    this.input.value = opt.label;
+    this.textInput.value = opt.label;
     this.select.value = opt.value;
-    this.host.setValue(opt.value);
-    this.filteredOptions = [...this.options];
-    this.renderOptions();
+    this.setValue(opt.value);
   }
 
   private moveActive(delta: number): void {
@@ -244,7 +269,7 @@ export default class ComboboxPlugin implements FieldPlugin {
       const active = i === index;
       el.setAttribute('aria-selected', String(active));
       if (active) {
-        this.input.setAttribute('aria-activedescendant', el.id);
+        this.textInput.setAttribute('aria-activedescendant', el.id);
         el.scrollIntoView({ block: 'nearest' });
       }
     });
@@ -272,8 +297,8 @@ export default class ComboboxPlugin implements FieldPlugin {
 
   private syncFromSelect(): void {
     const val = this.select.value;
-    const opt = this.options.find((o) => o.value === val);
-    this.input.value = opt?.label ?? '';
+    const opt = this.comboboxOptions.find((o) => o.value === val);
+    this.textInput.value = opt?.label ?? '';
   }
 
   private escapeHtml(str: string): string {

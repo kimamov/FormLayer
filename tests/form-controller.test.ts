@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FormController } from '../src/forms/form-controller';
-import type { FormSubmitFunction, FormPlugin, FormPluginHost, FieldEventDetail, FormEventDetail } from '../src/forms/types';
+import type { FormSubmitFunction, FormPlugin, FormPluginHost, FormField, FieldState, FieldValidationResult, FieldEventDetail, FormEventDetail } from '../src/forms/types';
 import { registerDefaultValidators } from '../src/forms/validators';
 
 const noopSubmit: FormSubmitFunction = async () => {};
@@ -813,6 +813,115 @@ describe('FormController', () => {
       input.dispatchEvent(new Event('change'));
 
       expect(ctrl.getState().isDirty).toBe(true);
+    });
+  });
+
+  describe('fieldsMap (custom field types)', () => {
+    function createFormWithCustomField(): HTMLFormElement {
+      const form = document.createElement('form');
+      form.id = 'custom-fields';
+      form.innerHTML = `
+        <div data-form-field="standard">
+          <input id="standard" type="text" name="standard" value="hello">
+          <span id="standard-errors" class="invalid-feedback"></span>
+        </div>
+        <div data-form-field="special" data-field-type="custom-widget">
+          <input id="special" type="text" name="special" value="custom-value">
+          <span id="special-errors" class="invalid-feedback"></span>
+        </div>
+      `;
+      document.body.appendChild(form);
+      return form;
+    }
+
+    class StubCustomField implements FormField {
+      readonly name: string;
+      private _state: FieldState;
+      private _onChange: ((state: FieldState) => void) | null = null;
+      public initCalled = false;
+
+      constructor(wrapper: HTMLElement) {
+        this.name = wrapper.getAttribute('data-form-field') ?? '';
+        this.initCalled = true;
+        this._state = {
+          name: this.name,
+          value: 'custom-init',
+          isValid: true,
+          isDirty: false,
+          isTouched: false,
+          errors: [],
+        };
+      }
+
+      getState(): FieldState { return { ...this._state }; }
+      validate(): FieldValidationResult { return { isValid: true, errors: [] }; }
+      reset(): void { this._state = { ...this._state, isDirty: false, isTouched: false, isValid: true, errors: [] }; }
+      destroy(): void { this._onChange = null; }
+      setEnabled(_enabled: boolean): void {}
+      setServerErrors(errors: string[]): void {
+        this._state = { ...this._state, isValid: errors.length === 0, errors };
+        this._onChange?.({ ...this._state });
+      }
+      connect(onChange: (state: FieldState) => void): void { this._onChange = onChange; }
+      focus(): void {}
+    }
+
+    it('uses a custom FormField class from fieldsMap for matching data-field-type', () => {
+      const form = createFormWithCustomField();
+      const ctrl = new FormController(form, noopSubmit, {
+        fieldsMap: { 'custom-widget': StubCustomField },
+      });
+
+      const state = ctrl.getState();
+      expect(state.fields.standard).toBeDefined();
+      expect(state.fields.special).toBeDefined();
+      expect(state.fields.special.value).toBe('custom-init');
+    });
+
+    it('falls back to FieldController when no fieldsMap entry matches', () => {
+      const form = createFormWithCustomField();
+      const ctrl = new FormController(form, noopSubmit, {
+        fieldsMap: {},
+      });
+
+      const state = ctrl.getState();
+      expect(state.fields.standard).toBeDefined();
+      expect(state.fields.special).toBeDefined();
+      expect(state.fields.special.value).toBe('custom-value');
+    });
+
+    it('works without fieldsMap (all fields use FieldController)', () => {
+      const form = createFormWithCustomField();
+      const ctrl = new FormController(form, noopSubmit);
+
+      const state = ctrl.getState();
+      expect(Object.keys(state.fields)).toHaveLength(2);
+      expect(state.fields.standard.value).toBe('hello');
+    });
+
+    it('emits field:added for custom field types', () => {
+      const form = createFormWithCustomField();
+      const handler = vi.fn();
+      const ctrl = new FormController(form, noopSubmit, {
+        fieldsMap: { 'custom-widget': StubCustomField },
+      });
+      ctrl.on('field:added', handler);
+
+      const newField = document.createElement('div');
+      newField.setAttribute('data-form-field', 'dynamic');
+      newField.setAttribute('data-field-type', 'custom-widget');
+      newField.innerHTML = `<input id="dynamic" type="text" name="dynamic"><span id="dynamic-errors" class="invalid-feedback"></span>`;
+      form.appendChild(newField);
+
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          expect(handler).toHaveBeenCalled();
+          const detail = handler.mock.calls[0][0] as FieldEventDetail;
+          expect(detail.fieldName).toBe('dynamic');
+          expect(detail.state.value).toBe('custom-init');
+          resolve();
+        }, 0);
+      });
     });
   });
 });

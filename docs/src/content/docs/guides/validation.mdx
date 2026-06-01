@@ -140,11 +140,11 @@ Validates uploaded file sizes. Supports units like `1K`, `5M`, `1G`.
 Register a custom validator before initializing forms:
 
 ```typescript
-import { formRegistry, registerDefaultValidators } from 'formlayer';
+import { registerDefaultValidators, registerValidator } from 'formlayer';
 
 registerDefaultValidators();
 
-formRegistry.registerValidator({
+registerValidator({
   type: 'PasswordStrength',
   validate(value, options) {
     if (!value) return { valid: true, message: '' };
@@ -182,7 +182,7 @@ Then use it in HTML:
 Validators can return a `Promise` for server-side checks:
 
 ```typescript
-formRegistry.registerValidator({
+registerValidator({
   type: 'UniqueEmail',
   async validate(value, options) {
     if (!value) return { valid: true, message: '' };

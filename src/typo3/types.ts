@@ -4,19 +4,22 @@ import type {
   FormSubmitContext,
   AjaxFormResponse,
   FormControllerApi,
-  FieldPluginFactory,
   FormPluginFactory,
 } from '../forms/types';
+import type { CustomFieldsMap } from '../forms/create-field';
 import type { FormRegistry } from '../forms/registry';
 
 export interface Typo3FormsOptions {
   disableDefaultValidators?: boolean;
   additionalValidators?: Validator[];
-  additionalFieldPlugins?: Record<string, FieldPluginFactory>;
+  /** Extra custom field types registered globally before form init. */
+  additionalFieldTypes?: CustomFieldsMap;
   additionalFormPlugins?: FormPluginFactory[];
   onSubmit?: FormSubmitFunction;
   formSelector?: string;
   fieldSelector?: string;
+  /** Per-form custom field overrides merged with globally registered types. */
+  fieldsMap?: CustomFieldsMap;
   hooks?: Typo3FormsHooks;
 }
 

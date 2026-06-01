@@ -1,5 +1,7 @@
 export { formRegistry, FormRegistry } from './forms/registry';
-export { registerPlugin, hasPlugin, unregisterPlugin } from './forms/plugins/index';
+export type { RegistryInitArguments } from './forms/registry';
+export { createFormController } from './forms/create-form-controller';
+export { registerFieldType, unregisterFieldType, hasFieldType, getRegisteredFieldTypes, mergeFieldsMap } from './forms/field-types';
 export {
   registerDefaultValidators,
   registerValidator,
@@ -7,16 +9,26 @@ export {
   runValidators,
   runValidatorsAsync,
 } from './forms/validators';
-export { initField } from './forms/init-field';
-export type { InitFieldOptions, PluginArg } from './forms/init-field';
+export { initField, initFieldAsync } from './forms/init-field';
+export type { InitFieldOptions } from './forms/init-field';
+export { createField, createFieldAsync, isLazyFactory } from './forms/create-field';
+export type { CustomFieldsMap, CreateFieldOptions, AddFieldFromElementOptions } from './forms/create-field';
+export { AbstractDomFormField } from './forms/abstract-dom-field';
+export type { AbstractDomFieldOptions } from './forms/abstract-dom-field';
+export { FieldEmitter } from './forms/field-emitter';
+export { FieldErrorPresenter } from './forms/field-error-presenter';
+export type { FieldErrorPresenterOptions } from './forms/field-error-presenter';
+export type { FieldOptions, FieldErrorRenderContext } from './forms/field-options';
+export { CSS_CLASSES, SELECTORS, DEBOUNCE_MS } from './forms/types';
 
 export type {
-  FieldPlugin,
-  FieldPluginFactory,
-  FieldPluginHost,
   FormPlugin,
   FormPluginFactory,
   FormPluginHost,
+  FormField,
+  FormFieldClass,
+  FormFieldFactory,
+  DomFormField,
   ClientVariant,
   FormSubmitContext,
   FormSubmitActions,
@@ -24,6 +36,7 @@ export type {
   FormControllerApi,
   FormState,
   FieldState,
+  FieldValidationResult,
   FormEventType,
   RegistryEventType,
   FieldEventDetail,
@@ -42,5 +55,5 @@ export type {
   FormLoadingStateOptions,
 } from './forms/types';
 
-export type { FieldControllerOptions, FieldErrorRenderContext, FieldValidationResult } from './forms/field-controller';
+export type { FieldControllerOptions } from './forms/field-controller';
 export type { FormControllerOptions } from './forms/form-controller';

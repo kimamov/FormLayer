@@ -11,12 +11,13 @@ import type {
   FormSubmitFunction,
   FormLoadingStateDetail,
   FormLoadingStateOptions,
+  FormField,
 } from './types';
 import { SELECTORS } from './types';
-import { FieldController } from './field-controller';
 import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
-import { getPluginFactory } from './plugins/index';
+import { createField, createFieldAsync, isLazyFactory, type AddFieldFromElementOptions, type CustomFieldsMap } from './create-field';
+import { mergeFieldsMap } from './field-types';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -34,13 +35,15 @@ export interface FormControllerOptions {
    * Complements the `form:invalid` event for imperative UI such as a summary banner.
    */
   onFormInvalid?: (detail: FormEventDetail) => void;
+
+  fieldsMap?: CustomFieldsMap
 }
 
 export class FormController implements FormControllerApi, FormPluginHost {
   readonly id: string;
   private readonly formEl: HTMLFormElement;
   private readonly fieldSelector: string;
-  private readonly fields = new Map<string, FieldController>();
+  private readonly fields = new Map<string, FormField>();
   private readonly formPlugins: FormPlugin[] = [];
   private readonly eventBus = new EventBus();
   private readonly observer: MutationObserver;
@@ -50,6 +53,8 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private readonly loadingStateOptions: false | FormLoadingStateOptions;
   private readonly onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
   private readonly onFormInvalid?: (detail: FormEventDetail) => void;
+
+  private readonly _fieldsMap: CustomFieldsMap;
 
   private _isSubmitting = false;
   private _allowSubmit = false;
@@ -64,6 +69,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
     this.onFormInvalid = options?.onFormInvalid;
+    this._fieldsMap = mergeFieldsMap(options?.fieldsMap);
 
     this.formEl.setAttribute('novalidate', '');
 
@@ -72,14 +78,18 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.bindSubmit();
   }
 
+  get fieldsMap(): Readonly<CustomFieldsMap> {
+    return this._fieldsMap;
+  }
+
   getField(name: string): FieldState | undefined {
-    return this.fields.get(name)?.state;
+    return this.fields.get(name)?.getState();
   }
 
   getState(): FormState {
     const fields: Record<string, FieldState> = {};
     for (const [name, ctrl] of this.fields) {
-      fields[name] = ctrl.state;
+      fields[name] = ctrl.getState();
     }
 
     return {
@@ -92,7 +102,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   async validate(): Promise<boolean> {
-    let firstInvalid: FieldController | null = null;
+    let firstInvalid: FormField | null = null;
 
     for (const ctrl of this.fields.values()) {
       const result = ctrl.validate();
@@ -109,7 +119,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.eventBus.emit(isValid ? 'form:valid' : 'form:invalid', detail);
 
     if (firstInvalid) {
-      firstInvalid.inputElement.focus();
+      firstInvalid.focus();
     }
 
     return isValid;
@@ -161,7 +171,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   getFieldValue(name: string): string | undefined {
-    return this.fields.get(name)?.state.value;
+    return this.fields.get(name)?.getState().value;
   }
 
   getFieldNames(): string[] {
@@ -173,66 +183,97 @@ export class FormController implements FormControllerApi, FormPluginHost {
     if (ctrl) ctrl.setEnabled(enabled);
   }
 
-  private discoverFields(): void {
-    const wrappers = this.formEl.querySelectorAll<HTMLElement>(this.fieldSelector);
-    wrappers.forEach((wrapper) => this.initField(wrapper));
+  addField(field: FormField): void {
+    const name = field.name;
+    if (!name) {
+      console.warn('[FormLayer] addField() ignored: field has no name');
+      return;
+    }
+
+    const existing = this.fields.get(name);
+    if (existing) existing.destroy();
+
+    this.registerField(field, name);
   }
 
-  private initField(wrapper: HTMLElement): void {
+  addFieldFromElement(wrapper: HTMLElement, options?: AddFieldFromElementOptions): FormField {
+    const { field: factory, ...fieldOptions } = options ?? {};
+    const hasFieldOptions = Object.keys(fieldOptions).length > 0;
+    const field = createField(wrapper, {
+      factory,
+      customFields: this._fieldsMap,
+      fieldOptions: hasFieldOptions ? fieldOptions : undefined,
+    });
+    this.addField(field);
+    return field;
+  }
+
+  removeField(name: string): void {
+    const field = this.fields.get(name);
+    if (!field) return;
+
+    const detail: FieldEventDetail = {
+      formId: this.id,
+      fieldName: name,
+      state: field.getState(),
+    };
+
+    field.destroy();
+    this.fields.delete(name);
+    this.eventBus.emit('field:removed', detail);
+  }
+
+
+  private discoverFields(): void {
+    const wrappers = this.formEl.querySelectorAll<HTMLElement>(this.fieldSelector);
+    wrappers.forEach((wrapper) => this.initFieldFromElement(wrapper));
+  }
+
+  /**
+ * Instantiate a FormField from a `[data-form-field]` wrapper.
+ *
+ * If `customFields` contains a matching `data-field-type` entry:
+ *  - Sync class  → instantiated immediately
+ *  - Lazy factory → resolved via dynamic import, then registered on completion
+ *
+ * Otherwise falls back to the default FieldController.
+ */
+  private initFieldFromElement(wrapper: HTMLElement): void {
     const name = wrapper.getAttribute('data-form-field');
     if (!name || this.fields.has(name)) return;
 
+    const type = wrapper.getAttribute('data-field-type');
+    const factory = type ? this._fieldsMap[type] : undefined;
+
+    if (factory && isLazyFactory(factory)) {
+      createFieldAsync(wrapper, { factory })
+        .then((field) => {
+          if (!this.fields.has(name)) this.registerField(field, name);
+        })
+        .catch((err) => {
+          console.warn(`[FormsModule] Failed to load field "${type}":`, err);
+        });
+      return;
+    }
+
     try {
-      const ctrl = new FieldController(wrapper, this.fieldOptions);
-      ctrl.setChangeCallback((state) => this.handleFieldChange(state));
-      this.fields.set(name, ctrl);
-
-      this.loadPluginIfNeeded(ctrl);
-
-      const detail: FieldEventDetail = {
-        formId: this.id,
-        fieldName: name,
-        state: ctrl.state,
-      };
-      this.eventBus.emit('field:added', detail);
+      const field = createField(wrapper, { customFields: this._fieldsMap, fieldOptions: this.fieldOptions });
+      this.registerField(field, name);
     } catch (err) {
       console.warn(`[FormsModule] Could not init field "${name}":`, err);
     }
   }
 
-  private loadPluginIfNeeded(ctrl: FieldController): void {
-    const type = ctrl.fieldType;
-    if (!type) return;
-
-    const factory = getPluginFactory(type);
-    if (!factory) return;
-
-    factory()
-      .then(({ default: PluginClass }) => {
-        const plugin = new PluginClass();
-        return ctrl.attachPlugin(plugin);
-      })
-      .catch((err) => {
-        console.warn(`[FormsModule] Failed to load plugin "${type}":`, err);
-      });
-  }
-
-  private destroyField(wrapper: HTMLElement): void {
-    const name = wrapper.getAttribute('data-form-field');
-    if (!name) return;
-
-    const ctrl = this.fields.get(name);
-    if (!ctrl) return;
+  private registerField(field: FormField, name: string): void {
+    field.connect((state) => this.handleFieldChange(state));
+    this.fields.set(name, field);
 
     const detail: FieldEventDetail = {
       formId: this.id,
       fieldName: name,
-      state: ctrl.state,
+      state: field.getState(),
     };
-
-    ctrl.destroy();
-    this.fields.delete(name);
-    this.eventBus.emit('field:removed', detail);
+    this.eventBus.emit('field:added', detail);
   }
 
   private handleFieldChange(state: FieldState): void {
@@ -250,21 +291,22 @@ export class FormController implements FormControllerApi, FormPluginHost {
     const selector = this.fieldSelector;
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        const added = Array.from(mutation.addedNodes);
-        for (const node of added) {
+        for (const node of Array.from(mutation.addedNodes)) {
           if (!(node instanceof HTMLElement)) continue;
           const targets = node.matches(selector)
             ? [node]
             : Array.from(node.querySelectorAll<HTMLElement>(selector));
-          targets.forEach((el) => this.initField(el));
+          targets.forEach((el) => this.initFieldFromElement(el));
         }
-        const removed = Array.from(mutation.removedNodes);
-        for (const node of removed) {
+        for (const node of Array.from(mutation.removedNodes)) {
           if (!(node instanceof HTMLElement)) continue;
           const targets = node.matches(selector)
             ? [node]
             : Array.from(node.querySelectorAll<HTMLElement>(selector));
-          targets.forEach((el) => this.destroyField(el));
+          targets.forEach((el) => {
+            const fieldName = el.getAttribute('data-form-field');
+            if (fieldName) this.removeField(fieldName);
+          });
         }
       }
     });
@@ -335,9 +377,9 @@ export class FormController implements FormControllerApi, FormPluginHost {
       }
     }
 
-    const firstInvalidField = [...this.fields.values()].find((c) => !c.state.isValid);
+    const firstInvalidField = [...this.fields.values()].find((c) => !c.getState().isValid);
     if (firstInvalidField) {
-      firstInvalidField.inputElement.focus();
+      firstInvalidField.focus();
     }
 
     const detail: FormEventDetail = { formId: this.id, state: this.getState() };
@@ -395,14 +437,14 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
   private computeIsValid(): boolean {
     for (const ctrl of this.fields.values()) {
-      if (!ctrl.state.isValid) return false;
+      if (!ctrl.getState().isValid) return false;
     }
     return true;
   }
 
   private computeIsDirty(): boolean {
     for (const ctrl of this.fields.values()) {
-      if (ctrl.state.isDirty) return true;
+      if (ctrl.getState().isDirty) return true;
     }
     return false;
   }

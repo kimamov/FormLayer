@@ -1,13 +1,47 @@
 ---
 title: Plugins
-description: Built-in field plugins and how to create custom ones.
+description: Custom field types and form-level plugins.
 ---
 
-Plugins enhance individual fields or entire forms. Field plugins transform the DOM (e.g., replacing a `<select>` with a searchable combobox), while form plugins operate on the form as a whole (e.g., conditional field visibility).
+FormLayer supports two extension mechanisms: **custom field types** (via `fieldsMap`) for replacing how individual fields render and behave, and **form plugins** for cross-cutting logic that operates on the form as a whole.
 
-## Field Plugins
+## Custom Field Types (`fieldsMap`)
 
-A field plugin is activated by the `data-field-type` attribute on the field wrapper. FormLayer lazy-loads the matching plugin from the registry.
+Custom field types replace the default `FieldController` for specific `data-field-type` values. Each custom type implements the `FormField` interface, giving you full control over rendering, value reading, validation, and lifecycle.
+
+### Registering Custom Fields
+
+Pass a `fieldsMap` to `FormControllerOptions`:
+
+```typescript
+import { initTypo3Forms } from 'formlayer/typo3';
+import { ComboboxField } from 'formlayer-plugin-combobox';
+import { DatepickerField } from 'formlayer-plugin-datepicker';
+
+initTypo3Forms({
+  fieldsMap: {
+    combobox: ComboboxField,
+    datepicker: DatepickerField,
+  },
+});
+```
+
+When a `[data-form-field]` wrapper has `data-field-type="combobox"`, FormLayer instantiates `ComboboxField` instead of the default `FieldController`.
+
+### Lazy-Loaded Custom Fields
+
+Use a factory function for code-split custom fields that load on first use:
+
+```typescript
+initTypo3Forms({
+  fieldsMap: {
+    combobox: () => import('formlayer-plugin-combobox'),
+    datepicker: () => import('formlayer-plugin-datepicker'),
+  },
+});
+```
+
+The factory must return `{ default: FormFieldClass }`, matching the standard dynamic `import()` convention.
 
 ### Combobox
 
@@ -15,12 +49,6 @@ Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-p
 
 ```bash
 npm install formlayer-plugin-combobox
-```
-
-```typescript
-import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
-
-registerComboboxPlugin();
 ```
 
 Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission.
@@ -54,12 +82,6 @@ Requires [`formlayer-plugin-datepicker`](https://www.npmjs.com/package/formlayer
 
 ```bash
 npm install formlayer-plugin-datepicker
-```
-
-```typescript
-import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
-
-registerDatepickerPlugin();
 ```
 
 Wraps an input with the Air Datepicker library. Reads the date format from a hidden input (TYPO3 convention).
@@ -131,78 +153,97 @@ When `accountType` is not `"business"`, the `companyName` and `taxId` fields are
 
 **Expression syntax** supports `formValue("fieldName")`, comparisons (`===`, `!==`, `>`, `<`, `>=`, `<=`), logical operators (`&&`, `||`, `!`), `in` operator, and string/number/boolean literals.
 
-## Registering Plugins
+## Creating a Custom Field Type
 
-Plugins are registered globally before form initialization:
-
-```typescript
-import { registerPlugin, formRegistry } from 'formlayer';
-
-// Field plugin (lazy-loaded via dynamic import)
-registerPlugin('combobox', () => import('./plugins/combobox'));
-registerPlugin('my-slider', () => import('./plugins/slider'));
-
-// Form plugin
-formRegistry.registerFormPlugin(() => import('./plugins/my-form-plugin'));
-```
-
-With TYPO3, install and register plugins **before** calling `initTypo3Forms()`:
+A custom field type implements the `FormField` interface:
 
 ```typescript
-import { initTypo3Forms } from 'formlayer/typo3';
-import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
-import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
-import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
-import { registerTypo3AltchaPlugin } from 'formlayer-plugin-altcha/typo3';
+import type { FormField, FieldState, FieldValidationResult } from 'formlayer';
 
-registerComboboxPlugin();
-registerClientVariantsPlugin();
-registerDatepickerPlugin();
-registerTypo3AltchaPlugin();
-
-initTypo3Forms({
-  additionalFieldPlugins: {
-    'color-picker': () => import('./plugins/color-picker'),
-  },
-  additionalFormPlugins: [
-    () => import('./plugins/analytics'),
-  ],
-});
-```
-
-## Creating a Custom Field Plugin
-
-A field plugin implements the `FieldPlugin` interface:
-
-```typescript
-import type { FieldPlugin, FieldPluginHost } from 'formlayer';
-
-export default class TogglePlugin implements FieldPlugin {
-  private host!: FieldPluginHost;
+export default class ToggleField implements FormField {
+  readonly name: string;
+  private wrapper: HTMLElement;
+  private input: HTMLInputElement;
   private toggle!: HTMLButtonElement;
+  private _state: FieldState;
+  private _onChange: ((state: FieldState) => void) | null = null;
 
-  async init(wrapper: HTMLElement, host: FieldPluginHost): Promise<void> {
-    this.host = host;
-    const input = host.inputElement as HTMLInputElement;
+  constructor(wrapper: HTMLElement) {
+    this.wrapper = wrapper;
+    this.name = wrapper.getAttribute('data-form-field') ?? '';
+    this.input = wrapper.querySelector('input')!;
 
+    this._state = {
+      name: this.name,
+      value: this.input.value,
+      isValid: true,
+      isDirty: false,
+      isTouched: false,
+      errors: [],
+    };
+
+    this.buildUI();
+  }
+
+  private buildUI(): void {
     this.toggle = document.createElement('button');
     this.toggle.type = 'button';
-    this.toggle.textContent = input.value === 'on' ? 'ON' : 'OFF';
+    this.toggle.textContent = this.input.value === 'on' ? 'ON' : 'OFF';
     this.toggle.className = 'toggle-btn';
 
     this.toggle.addEventListener('click', () => {
-      const newValue = host.inputElement.value === 'on' ? 'off' : 'on';
-      host.setValue(newValue);
+      const newValue = this._state.value === 'on' ? 'off' : 'on';
+      this.input.value = newValue;
+      this._state = { ...this._state, value: newValue, isDirty: true, isTouched: true };
       this.toggle.textContent = newValue === 'on' ? 'ON' : 'OFF';
+      this._onChange?.({ ...this._state });
     });
 
-    input.hidden = true;
-    wrapper.appendChild(this.toggle);
+    this.input.hidden = true;
+    this.wrapper.appendChild(this.toggle);
+  }
+
+  getState(): FieldState { return { ...this._state }; }
+
+  validate(): FieldValidationResult {
+    return { isValid: true, errors: [] };
+  }
+
+  reset(): void {
+    this.input.value = this.input.defaultValue;
+    this._state = {
+      ...this._state,
+      value: this.input.value,
+      isDirty: false,
+      isTouched: false,
+      isValid: true,
+      errors: [],
+    };
+    this.toggle.textContent = this.input.value === 'on' ? 'ON' : 'OFF';
   }
 
   destroy(): void {
-    this.toggle?.remove();
-    (this.host?.inputElement as HTMLInputElement).hidden = false;
+    this.toggle.remove();
+    this.input.hidden = false;
+    this._onChange = null;
+  }
+
+  setEnabled(enabled: boolean): void {
+    this.wrapper.hidden = !enabled;
+    this.toggle.disabled = !enabled;
+  }
+
+  setServerErrors(errors: string[]): void {
+    this._state = { ...this._state, isValid: errors.length === 0, errors };
+    this._onChange?.({ ...this._state });
+  }
+
+  connect(onChange: (state: FieldState) => void): void {
+    this._onChange = onChange;
+  }
+
+  focus(): void {
+    this.toggle.focus();
   }
 }
 ```
@@ -210,7 +251,24 @@ export default class TogglePlugin implements FieldPlugin {
 Register and use it:
 
 ```typescript
-registerPlugin('toggle', () => import('./plugins/toggle'));
+import { initTypo3Forms } from 'formlayer/typo3';
+import ToggleField from './fields/toggle';
+
+initTypo3Forms({
+  fieldsMap: {
+    toggle: ToggleField,
+  },
+});
+```
+
+Or lazy-load:
+
+```typescript
+initTypo3Forms({
+  fieldsMap: {
+    toggle: () => import('./fields/toggle'),
+  },
+});
 ```
 
 ```html
@@ -247,4 +305,10 @@ export default class FormAnalyticsPlugin implements FormPlugin {
 
   destroy(): void {}
 }
+```
+
+Register form plugins via the registry:
+
+```typescript
+formRegistry.registerFormPlugin(() => import('./plugins/analytics'));
 ```
