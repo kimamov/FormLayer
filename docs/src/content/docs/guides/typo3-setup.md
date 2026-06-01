@@ -57,8 +57,8 @@ const api = initTypo3Forms({
     },
   ],
 
-  additionalFieldPlugins: {
-    'color-picker': () => import('./plugins/color-picker'),
+  additionalFieldTypes: {
+    'color-picker': () => import('./fields/color-picker'),
   },
 
   additionalFormPlugins: [

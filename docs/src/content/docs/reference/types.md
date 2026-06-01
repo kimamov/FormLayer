@@ -194,28 +194,26 @@ interface FormPluginHost {
 }
 ```
 
-### Field Plugins (legacy)
+### Custom Field Types
 
-Field plugins are superseded by the `FormField` interface and `fieldsMap`. Existing plugins using this interface will continue to work until migrated.
+Custom fields implement the `FormField` interface. Register globally with `registerFieldType()` or per-form via `fieldsMap`:
 
 ```typescript
-interface FieldPlugin {
-  init(wrapper: HTMLElement, host: FieldPluginHost): void | Promise<void>;
-  destroy(): void;
-}
-
-interface FieldPluginHost {
+interface FormField {
   readonly name: string;
-  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-  readonly element: HTMLElement;
-  setValue(value: string): void;
-  validate(): void;
-  replaceInput(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  getState(): FieldState;
+  validate(): FieldValidationResult;
+  reset(): void;
+  destroy(): void;
+  setEnabled(enabled: boolean): void;
+  setServerErrors(errors: string[]): void;
+  connect(onChange: (state: FieldState) => void): void;
+  focus(): void;
 }
 
-type FieldPluginFactory = () => Promise<{ default: new () => FieldPlugin }>;
+type FormFieldClass = new (wrapper: HTMLElement, options?: FieldOptions) => FormField;
+type FormFieldFactory = FormFieldClass | (() => Promise<{ default: FormFieldClass }>);
+type CustomFieldsMap = Record<string, FormFieldFactory>;
 ```
 
 ## Submit Types
@@ -244,7 +242,9 @@ type FormSubmitFunction = (context: FormSubmitContext) => Promise<void>;
 interface Typo3FormsOptions {
   disableDefaultValidators?: boolean;
   additionalValidators?: Validator[];
+  additionalFieldTypes?: CustomFieldsMap;
   additionalFormPlugins?: FormPluginFactory[];
+  fieldsMap?: CustomFieldsMap;
   onSubmit?: FormSubmitFunction;
   formSelector?: string;
   fieldSelector?: string;

@@ -1,6 +1,6 @@
 import { formRegistry } from '../forms/registry';
 import { registerFieldType } from '../forms/field-types';
-import { registerDefaultValidators } from '../forms/validators';
+import { registerDefaultValidators, registerValidator } from '../forms/validators';
 import { createTypo3Submit } from './submit';
 import type { Typo3FormsOptions, Typo3FormsApi } from './types';
 import type { FormSubmitFunction, RegistryEventHandler } from '../forms/types';
@@ -23,7 +23,7 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
   }
 
   for (const v of options?.additionalValidators ?? []) {
-    formRegistry.registerValidator(v);
+    registerValidator(v);
   }
 
   for (const [type, factory] of Object.entries(options?.additionalFieldTypes ?? {})) {

@@ -9,6 +9,28 @@ The `FormRegistry` manages all form controllers. Access via the exported `formRe
 import { formRegistry } from 'formlayer';
 ```
 
+## Single-form apps
+
+For one form, skip the registry:
+
+```typescript
+import { createFormController, registerDefaultValidators } from 'formlayer';
+
+registerDefaultValidators();
+const form = createFormController(document.getElementById('contact')!, submitFn);
+```
+
+## Global validators and field types
+
+Register globally via module-level APIs (not on the registry):
+
+```typescript
+import { registerValidator, registerFieldType } from 'formlayer';
+
+registerValidator({ type: 'MyValidator', validate(value, options) { ... } });
+registerFieldType('slider', () => import('./fields/slider'));
+```
+
 ## Methods
 
 ### `init(options)`
@@ -61,33 +83,12 @@ formRegistry.on('form:registered', ({ formId }) => { ... });
 formRegistry.on('form:unregistered', ({ formId }) => { ... });
 ```
 
-### `registerValidator(validator)`
-
-Registers a validator globally.
-
-```typescript
-formRegistry.registerValidator({
-  type: 'MyValidator',
-  validate(value, options) { ... }
-});
-```
-
 ### `registerFormPlugin(factory)`
 
 Registers a form-level plugin factory. Applied to all forms registered after this call.
 
 ```typescript
 formRegistry.registerFormPlugin(() => import('./plugins/analytics'));
-```
-
-### `registerPlugin(type, factory)` / `unregisterPlugin(type)` / `hasPlugin(type)` (legacy)
-
-Manage the legacy field plugin registry. Prefer using `fieldsMap` in `FormControllerOptions` for custom field types — see [Plugins](/guides/plugins/).
-
-```typescript
-formRegistry.registerPlugin('slider', () => import('./plugins/slider'));
-formRegistry.hasPlugin('slider');    // true
-formRegistry.unregisterPlugin('slider');
 ```
 
 ## Global Access

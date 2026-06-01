@@ -12,12 +12,11 @@ import type {
   FormLoadingStateDetail,
   FormLoadingStateOptions,
   FormField,
-  AddFieldFromElementOptions,
 } from './types';
 import { SELECTORS } from './types';
 import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
-import { createField, createFieldAsync, isLazyFactory, type CustomFieldsMap } from './create-field';
+import { createField, createFieldAsync, isLazyFactory, type AddFieldFromElementOptions, type CustomFieldsMap } from './create-field';
 import { mergeFieldsMap } from './field-types';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
@@ -55,7 +54,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private readonly onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
   private readonly onFormInvalid?: (detail: FormEventDetail) => void;
 
-  public fieldsMap: CustomFieldsMap = {};
+  private readonly _fieldsMap: CustomFieldsMap;
 
   private _isSubmitting = false;
   private _allowSubmit = false;
@@ -70,13 +69,17 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
     this.onFormInvalid = options?.onFormInvalid;
-    this.fieldsMap = mergeFieldsMap(options?.fieldsMap);
+    this._fieldsMap = mergeFieldsMap(options?.fieldsMap);
 
     this.formEl.setAttribute('novalidate', '');
 
     this.discoverFields();
     this.observer = this.createObserver();
     this.bindSubmit();
+  }
+
+  get fieldsMap(): Readonly<CustomFieldsMap> {
+    return this._fieldsMap;
   }
 
   getField(name: string): FieldState | undefined {
@@ -194,10 +197,12 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   addFieldFromElement(wrapper: HTMLElement, options?: AddFieldFromElementOptions): FormField {
+    const { field: factory, ...fieldOptions } = options ?? {};
+    const hasFieldOptions = Object.keys(fieldOptions).length > 0;
     const field = createField(wrapper, {
-      factory: options?.field,
-      customFields: this.fieldsMap,
-      fieldOptions: toFieldControllerOptions(options),
+      factory,
+      customFields: this._fieldsMap,
+      fieldOptions: hasFieldOptions ? fieldOptions : undefined,
     });
     this.addField(field);
     return field;
@@ -238,7 +243,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     if (!name || this.fields.has(name)) return;
 
     const type = wrapper.getAttribute('data-field-type');
-    const factory = type ? this.fieldsMap[type] : undefined;
+    const factory = type ? this._fieldsMap[type] : undefined;
 
     if (factory && isLazyFactory(factory)) {
       createFieldAsync(wrapper, { factory })
@@ -252,7 +257,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     }
 
     try {
-      const field = createField(wrapper, { customFields: this.fieldsMap, fieldOptions: this.fieldOptions });
+      const field = createField(wrapper, { customFields: this._fieldsMap, fieldOptions: this.fieldOptions });
       this.registerField(field, name);
     } catch (err) {
       console.warn(`[FormsModule] Could not init field "${name}":`, err);
@@ -443,22 +448,4 @@ export class FormController implements FormControllerApi, FormPluginHost {
     }
     return false;
   }
-}
-
-
-function toFieldControllerOptions(
-  options?: AddFieldFromElementOptions,
-): FieldControllerOptions | undefined {
-  if (!options) return undefined;
-
-  const { field: _field, validate, onServerErrors, renderErrors } = options;
-  if (!validate && !onServerErrors && !renderErrors) return undefined;
-
-  return {
-    validate,
-    onServerErrors,
-    renderErrors: renderErrors
-      ? (errors, ctx) => renderErrors(errors, ctx)
-      : undefined,
-  };
 }

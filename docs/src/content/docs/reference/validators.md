@@ -6,7 +6,7 @@ description: API reference for the validator system.
 ## Registration
 
 ```typescript
-import { registerDefaultValidators, registerValidator, formRegistry } from 'formlayer';
+import { registerDefaultValidators, registerValidator } from 'formlayer';
 
 // Register all 12 built-in validators at once
 registerDefaultValidators();
@@ -18,9 +18,6 @@ registerValidator({
     return { valid: true, message: '' };
   },
 });
-
-// Or via the registry
-formRegistry.registerValidator({ type: 'Other', validate: ... });
 ```
 
 ## Validator Interface

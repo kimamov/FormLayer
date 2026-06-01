@@ -2,30 +2,16 @@ import type { FieldState, FieldValidationResult, ValidatorRule, FieldControllerE
 import { SELECTORS, DEBOUNCE_MS } from './types';
 import { runValidators } from './validators/index';
 import { FieldEmitter } from './field-emitter';
-import { FieldErrorPresenter, type FieldErrorRenderContext } from './field-error-presenter';
+import { FieldErrorPresenter } from './field-error-presenter';
+import type { FieldOptions } from './field-options';
 
 const NATIVE_CONSTRAINT_ATTRS = [
   'required', 'pattern', 'minlength', 'maxlength', 'min', 'max', 'step',
 ] as const;
 
-export type { FieldErrorRenderContext };
+export type { FieldErrorRenderContext } from './field-options';
 
-export interface FieldControllerOptions {
-  validate?: (value: string, rules: ValidatorRule[], defaultValidate: () => FieldValidationResult) => FieldValidationResult;
-  onServerErrors?: (errors: string[], fieldName: string) => string[];
-  /** CSS selector scoped to the field wrapper. Used after id-based lookups, before the default class fallback. */
-  errorsSelector?: string;
-  /** Resolve the errors container. Takes precedence over errorsSelector and built-in lookups. */
-  findErrorsElement?: (field: FieldController) => HTMLElement | null;
-  /** Render a single error message as HTML. Used by default rendering; ignored when renderErrors is set. */
-  renderError?: (ctx: FieldErrorRenderContext, field: FieldController) => string;
-  /** Join rendered error fragments. Default: `<br/>`. Ignored when renderErrors is set. */
-  errorsSeparator?: string;
-  /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
-  renderErrors?: (errors: string[], field: FieldController) => void;
-
-  [key: string]: unknown
-}
+export type FieldControllerOptions = FieldOptions;
 
 export class FieldController implements FormField {
   readonly name: string;

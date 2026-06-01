@@ -1,26 +1,31 @@
 import type { FormField, FormFieldClass, FormFieldFactory } from './types';
 import { FieldController } from './field-controller';
-import type { FieldControllerOptions } from './field-controller';
+import type { FieldOptions } from './field-options';
 import { isLazyFactory } from './create-field';
 
-export interface InitFieldOptions extends FieldControllerOptions {
-  field?: FormFieldClass
+export interface InitFieldOptions extends FieldOptions {
+  /** Explicit custom field class. Does not use fieldsMap or data-field-type lookup. */
+  field?: FormFieldClass;
 }
 
 /**
- * Initialize a standalone field (outside of a FormController).
+ * Initialize a standalone field (outside of a FormController or registry).
  *
  * Pass a `[data-form-field]` wrapper, or a bare input/select/textarea
  * (the closest `[data-form-field]` ancestor is used automatically).
+ *
+ * This is intentionally separate from the form path: no registry, no fieldsMap,
+ * and no automatic `data-field-type` resolution. Pass `{ field: MyField }` explicitly
+ * for custom field types.
  *
  * ```ts
  * // Default FieldController
  * const field = initField(wrapper);
  *
  * // Custom FormField implementation
- * const field = initField(wrapper, { field: ImageInputField });
+ * const field = initField(wrapper, { field: ComboboxField });
  *
- * // With FieldController options (validate, renderErrors, etc.)
+ * // With field options (validate, renderErrors, etc.)
  * const field = initField(wrapper, { validate: myValidator });
  * ```
  */
@@ -29,7 +34,7 @@ export function initField(element: HTMLElement, options?: InitFieldOptions): For
   const { field: FieldClass, ...fieldOptions } = options ?? {};
 
   if (FieldClass) {
-    return new FieldClass(wrapper);
+    return new FieldClass(wrapper, fieldOptions);
   }
 
   return new FieldController(wrapper, fieldOptions);
@@ -40,20 +45,23 @@ export function initField(element: HTMLElement, options?: InitFieldOptions): For
  *
  * ```ts
  * const field = await initFieldAsync(wrapper, () => import('./fields/image-input'));
+ * const field = await initFieldAsync(wrapper, () => import('./fields/image-input'), { validate: fn });
  * ```
  */
 export async function initFieldAsync(
   element: HTMLElement,
   factory: FormFieldFactory,
+  options?: FieldOptions,
 ): Promise<FormField> {
   const wrapper = resolveWrapper(element);
+  const opts = options ?? {};
 
   if (isLazyFactory(factory)) {
     const { default: Cls } = await factory();
-    return new Cls(wrapper);
+    return new Cls(wrapper, opts);
   }
 
-  return new factory(wrapper);
+  return new factory(wrapper, opts);
 }
 
 const INPUT_SELECTOR = 'input, select, textarea';

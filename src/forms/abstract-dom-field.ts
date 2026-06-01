@@ -7,17 +7,11 @@ import type {
   ValidatorRule,
 } from './types';
 import { FieldEmitter } from './field-emitter';
-import { FieldErrorPresenter, type FieldErrorPresenterOptions } from './field-error-presenter';
+import { FieldErrorPresenter } from './field-error-presenter';
 import { runValidators } from './validators/index';
+import type { FieldOptions } from './field-options';
 
-export type AbstractDomFieldOptions = FieldErrorPresenterOptions<AbstractDomFormField> & {
-  validate?: (
-    value: string,
-    rules: ValidatorRule[],
-    defaultValidate: () => FieldValidationResult,
-  ) => FieldValidationResult;
-  onServerErrors?: (errors: string[], fieldName: string) => string[];
-};
+export type AbstractDomFieldOptions = FieldOptions;
 
 export abstract class AbstractDomFormField implements DomFormField {
   readonly name: string;

@@ -58,7 +58,10 @@ export interface DomFormField extends FormField {
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
 }
 
-export type FormFieldClass = new (wrapper: HTMLElement, options?: Record<string, unknown>) => FormField;
+export type FormFieldClass = new (
+  wrapper: HTMLElement,
+  options?: import('./field-options').FieldOptions,
+) => FormField;
 
 export type FormFieldFactory =
   | FormFieldClass
@@ -119,17 +122,6 @@ export interface FormLoadingStateOptions {
   attribute?: string;
   /** Selector used when no submitter is available. Default: submit buttons in the form. */
   submitSelector?: string;
-}
-
-export interface AddFieldFromElementOptions {
-  field?: FormFieldFactory;
-  validate?: (
-    value: string,
-    rules: ValidatorRule[],
-    defaultValidate: () => FieldValidationResult,
-  ) => FieldValidationResult;
-  onServerErrors?: (errors: string[], fieldName: string) => string[];
-  renderErrors?: (errors: string[], field: FormField) => void;
 }
 
 export interface FormControllerApi {

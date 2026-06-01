@@ -1,10 +1,7 @@
-import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FormFieldFactory, FormPluginFactory, FormSubmitFunction } from './types';
+import type { FormControllerApi, RegistryEventType, RegistryEventHandler, FormPluginFactory, FormSubmitFunction } from './types';
 import { FormController } from './form-controller';
 import type { FormControllerOptions } from './form-controller';
 import { EventBus } from './events';
-import { registerValidator } from './validators/index';
-import { registerFieldType, unregisterFieldType, hasFieldType } from './field-types';
-import type { Validator } from './types';
 
 export interface RegistryInitArguments {
   submitFn: FormSubmitFunction;
@@ -78,22 +75,6 @@ export class FormRegistry {
 
   off(event: RegistryEventType, handler: RegistryEventHandler): void {
     this.eventBus.off(event, handler);
-  }
-
-  registerValidator(validator: Validator): void {
-    registerValidator(validator);
-  }
-
-  registerFieldType(type: string, factory: FormFieldFactory): void {
-    registerFieldType(type, factory);
-  }
-
-  unregisterFieldType(type: string): boolean {
-    return unregisterFieldType(type);
-  }
-
-  hasFieldType(type: string): boolean {
-    return hasFieldType(type);
   }
 
   registerFormPlugin(factory: FormPluginFactory): void {

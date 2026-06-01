@@ -32,27 +32,23 @@ ctrl.on('valid', (state) => {
 
 <FormPreview src="/demos/standalone-field.html" height="460px" title="Standalone field demo" />
 
-## With a Plugin
+## With a Custom Field Type
 
-Pass a `plugin` in the options — by registry key, class, or instance:
+Pass an explicit field class — standalone fields do not use the global field-type registry or `data-field-type` auto-discovery:
 
 ```typescript
-// By registry key (lazy-loaded)
-const comboCtrl = initField(mySelect, { plugin: 'combobox' });
+import { ComboboxField } from 'formlayer-plugin-combobox';
 
-// By class (instant)
-import { ComboboxPlugin } from 'formlayer-plugin-combobox';
-const comboCtrl2 = initField(mySelect, { plugin: ComboboxPlugin });
-
-// By instance (pre-configured)
-const plugin = new ComboboxPlugin();
-const comboCtrl3 = initField(mySelect, { plugin });
+const comboCtrl = initField(mySelectWrapper, { field: ComboboxField });
 ```
 
-For convenience, a bare plugin argument is also accepted:
+For lazy-loaded custom fields:
 
 ```typescript
-const comboCtrl = initField(mySelect, 'combobox');
+const comboCtrl = await initFieldAsync(
+  mySelectWrapper,
+  () => import('formlayer-plugin-combobox'),
+);
 ```
 
 ## With Custom Options
