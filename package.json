@@ -1,6 +1,6 @@
 {
   "name": "formlayer",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Type-safe progressive enhancement for server-rendered HTML forms",
   "type": "module",
   "license": "MIT",

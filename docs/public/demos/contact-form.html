@@ -44,11 +44,11 @@
 
     registerDefaultValidators();
 
-    formRegistry.init(async (ctx) => {
+    formRegistry.init({submitFn: async (ctx) => {
       // Simulate a server round-trip
       await new Promise((r) => setTimeout(r, 600));
       ctx.finish('<p style="color: var(--form-success); font-weight: 500;">Thank you! Your message has been sent.</p>');
-    });
+    }});
   </script>
 </body>
 </html>
