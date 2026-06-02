@@ -83,9 +83,9 @@
 
     registerDefaultValidators();
 
-    formRegistry.init(async (ctx) => {
+    formRegistry.init({submitFn: async (ctx) => {
       ctx.finish('<p style="color: var(--form-success); font-weight: 500;">All fields are valid!</p>');
-    });
+    }});
   </script>
 </body>
 </html>
