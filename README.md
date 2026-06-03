@@ -40,10 +40,12 @@ import 'formlayer/forms.css';
 
 registerDefaultValidators();
 
-formRegistry.init({submitFn: async (ctx) => {
-  const response = await fetch(ctx.formEl.action, { method: 'POST', body: ctx.formData });
-  ctx.finish('Thank you!');
-}});
+formRegistry.init({
+    submitFn: async (ctx) => {
+    const response = await fetch(ctx.formEl.action, { method: 'POST', body: ctx.formData });
+    ctx.finish('Thank you!');
+  }
+});
 ```
 
 ## Optional plugins
