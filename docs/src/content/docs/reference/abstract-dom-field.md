@@ -35,9 +35,13 @@ export default class MyField extends AbstractDomFormField {
 
 The constructor reads `data-form-field` from `wrapper`, parses `data-validate`, calls `mount()`, then wires error presentation. If `mount()` does not call `setControlElement()`, construction throws.
 
+Properties assigned in `mount()` must use `declare` (no runtime class field) — see [Subclass hooks](#subclass-hooks).
+
 ## Subclass hooks
 
 These methods define how your field interacts with the DOM. The base class calls them at the appropriate lifecycle points.
+
+**TypeScript class fields:** `mount()` runs from the parent constructor during `super()`. Subclass field initializers (e.g. `private input!: HTMLInputElement`) run *after* `super()` returns and reset anything `mount()` assigned. Use `declare private input: HTMLInputElement` for properties set only in `mount()` — `declare` emits no runtime initializer.
 
 ### `mount(): void` *(required)*
 

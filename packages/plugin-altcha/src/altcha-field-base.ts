@@ -13,7 +13,7 @@ interface StateChangeDetail {
  * and syncs the verified payload into form state.
  */
 export abstract class AltchaFieldBase extends AbstractDomFormField {
-  /** Assigned in mount(); `declare` avoids TS class-field init wiping it after super(). */
+  /** Set in mount(); use declare so subclass field init does not wipe after super(). */
   declare protected hiddenInput: HTMLInputElement;
   private widget: AltchaWidget | null = null;
   private liveRegion: HTMLElement | null = null;
