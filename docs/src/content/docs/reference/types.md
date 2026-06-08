@@ -100,7 +100,7 @@ interface FormControllerOptions {
 
 ## FormField Interface
 
-The contract implemented by `FieldController` and custom field types. Any class conforming to this interface can participate in a `FormController`.
+The contract implemented by `FieldController`, [`AbstractDomFormField`](/reference/abstract-dom-field/), and custom field types. Any class conforming to this interface can participate in a `FormController`.
 
 ```typescript
 interface FormField {
@@ -115,6 +115,26 @@ interface FormField {
   focus(): void;
 }
 ```
+
+## DomFormField
+
+Extended interface for DOM-backed fields with a wrapper, native control, and field-level events. Implemented by `FieldController` and `AbstractDomFormField`.
+
+```typescript
+interface DomFormField extends FormField {
+  readonly element: HTMLElement;
+  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  readonly fieldType: string | null;
+  readonly enabled: boolean;
+  setValue(value: string): void;
+  replaceInput?(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+}
+```
+
+Custom field plugins should extend [`AbstractDomFormField`](/reference/abstract-dom-field/) rather than implementing `DomFormField` from scratch.
 
 ## Custom Field Types
 

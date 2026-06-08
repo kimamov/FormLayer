@@ -1,10 +1,18 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import mermaid from 'astro-mermaid';
+import { rehypeBasePath } from './rehype-base-path.mjs';
+
+const base = '/FormLayer/';
 
 export default defineConfig({
 	site: 'https://kimamov.github.io',
-	base: '/FormLayer/',
+	base,
+	markdown: {
+		rehypePlugins: [[rehypeBasePath, base]],
+	},
 	integrations: [
+		mermaid({ autoTheme: true }),
 		starlight({
 			title: 'FormLayer',
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/kimamov/FormLayer' }],
@@ -24,6 +32,7 @@ export default defineConfig({
 						{ label: 'Events & Hooks', slug: 'guides/events' },
 						{ label: 'Loading State', slug: 'guides/loading-state' },
 						{ label: 'Plugins', slug: 'guides/plugins' },
+						{ label: 'Creating Custom Fields', slug: 'guides/custom-fields' },
 						{ label: 'Standalone Fields', slug: 'guides/standalone-fields' },
 					],
 				},

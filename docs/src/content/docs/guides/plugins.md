@@ -7,7 +7,9 @@ FormLayer supports two extension mechanisms: **custom field types** (via `fields
 
 ## Custom Field Types (`fieldsMap`)
 
-Custom field types replace the default `FieldController` for specific `data-field-type` values. Each custom type implements the `FormField` interface, giving you full control over rendering, value reading, validation, and lifecycle.
+Custom field types replace the default `FieldController` for specific `data-field-type` values. Each custom type implements the [`FormField`](/reference/types/#formfield-interface) interface.
+
+For DOM-backed widgets (hidden native control + custom UI), extend [`AbstractDomFormField`](/reference/abstract-dom-field/) from `formlayer` — it provides validation, error rendering, server errors, enable/disable, and field events. Built-in plugins (combobox, datepicker) use this base class. See [Creating Custom Fields](/guides/custom-fields/) for a step-by-step **image input with preview** tutorial.
 
 ### Registering Custom Fields
 
@@ -51,7 +53,7 @@ Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-p
 npm install formlayer-plugin-combobox
 ```
 
-Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission.
+Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission. Implemented with [`AbstractDomFormField`](/reference/abstract-dom-field/) — the hidden `<select>` holds the canonical value while the text input is the active control.
 
 ```html
 <div data-form-field="country" data-field-type="combobox"
@@ -155,94 +157,53 @@ When `accountType` is not `"business"`, the `companyName` and `taxId` fields are
 
 ## Creating a Custom Field Type
 
-A custom field type implements the `FormField` interface:
+**Recommended:** extend `AbstractDomFormField` and implement three hooks — `mount()`, `readValue()`, and `writeValue()`:
 
 ```typescript
-import type { FormField, FieldState, FieldValidationResult } from 'formlayer';
+import { AbstractDomFormField } from 'formlayer';
 
-export default class ToggleField implements FormField {
-  readonly name: string;
-  private wrapper: HTMLElement;
-  private input: HTMLInputElement;
+export default class ToggleField extends AbstractDomFormField {
+  private hiddenInput!: HTMLInputElement;
   private toggle!: HTMLButtonElement;
-  private _state: FieldState;
-  private _onChange: ((state: FieldState) => void) | null = null;
 
-  constructor(wrapper: HTMLElement) {
-    this.wrapper = wrapper;
-    this.name = wrapper.getAttribute('data-form-field') ?? '';
-    this.input = wrapper.querySelector('input')!;
-
-    this._state = {
-      name: this.name,
-      value: this.input.value,
-      isValid: true,
-      isDirty: false,
-      isTouched: false,
-      errors: [],
-    };
-
-    this.buildUI();
-  }
-
-  private buildUI(): void {
+  protected mount(): void {
+    this.hiddenInput = this.wrapper.querySelector('input')!;
     this.toggle = document.createElement('button');
     this.toggle.type = 'button';
-    this.toggle.textContent = this.input.value === 'on' ? 'ON' : 'OFF';
     this.toggle.className = 'toggle-btn';
+    this.toggle.textContent = this.readValue() === 'on' ? 'ON' : 'OFF';
 
     this.toggle.addEventListener('click', () => {
-      const newValue = this._state.value === 'on' ? 'off' : 'on';
-      this.input.value = newValue;
-      this._state = { ...this._state, value: newValue, isDirty: true, isTouched: true };
-      this.toggle.textContent = newValue === 'on' ? 'ON' : 'OFF';
-      this._onChange?.({ ...this._state });
-    });
+      const next = this.readValue() === 'on' ? 'off' : 'on';
+      this.setValue(next);
+      this.toggle.textContent = next === 'on' ? 'ON' : 'OFF';
+    }, { signal: this.signal });
 
-    this.input.hidden = true;
+    this.hiddenInput.hidden = true;
     this.wrapper.appendChild(this.toggle);
+    this.setControlElement(this.hiddenInput);
   }
 
-  getState(): FieldState { return { ...this._state }; }
-
-  validate(): FieldValidationResult {
-    return { isValid: true, errors: [] };
+  protected readValue(): string {
+    return this.hiddenInput.value;
   }
 
-  reset(): void {
-    this.input.value = this.input.defaultValue;
-    this._state = {
-      ...this._state,
-      value: this.input.value,
-      isDirty: false,
-      isTouched: false,
-      isValid: true,
-      errors: [],
-    };
-    this.toggle.textContent = this.input.value === 'on' ? 'ON' : 'OFF';
+  protected writeValue(value: string): void {
+    this.hiddenInput.value = value;
+    this.toggle.textContent = value === 'on' ? 'ON' : 'OFF';
   }
 
-  destroy(): void {
+  protected onReset(): void {
+    this.hiddenInput.value = this.hiddenInput.defaultValue;
+    this.toggle.textContent = this.readValue() === 'on' ? 'ON' : 'OFF';
+  }
+
+  protected onDestroy(): void {
     this.toggle.remove();
-    this.input.hidden = false;
-    this._onChange = null;
+    this.hiddenInput.hidden = false;
   }
 
-  setEnabled(enabled: boolean): void {
-    this.wrapper.hidden = !enabled;
-    this.toggle.disabled = !enabled;
-  }
-
-  setServerErrors(errors: string[]): void {
-    this._state = { ...this._state, isValid: errors.length === 0, errors };
-    this._onChange?.({ ...this._state });
-  }
-
-  connect(onChange: (state: FieldState) => void): void {
-    this._onChange = onChange;
-  }
-
-  focus(): void {
+  protected focusControl(): void {
     this.toggle.focus();
   }
 }
@@ -261,22 +222,14 @@ initTypo3Forms({
 });
 ```
 
-Or lazy-load:
-
-```typescript
-initTypo3Forms({
-  fieldsMap: {
-    toggle: () => import('./fields/toggle'),
-  },
-});
-```
-
 ```html
 <div data-form-field="notifications" data-field-type="toggle">
   <label>Notifications</label>
   <input type="hidden" name="notifications" value="off" />
 </div>
 ```
+
+For a longer tutorial (preview UI, lifecycle diagrams, event wiring, checklist), see [Creating Custom Fields](/guides/custom-fields/). Implement [`FormField`](/reference/types/#formfield-interface) directly only when your field has no DOM wrapper or no single control element.
 
 ## Creating a Custom Form Plugin
 

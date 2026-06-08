@@ -3,7 +3,9 @@ title: FieldController
 description: API reference for individual field controllers.
 ---
 
-A `FieldController` wraps a single form field (a `[data-form-field]` wrapper containing an `input`, `select`, or `textarea`). It implements the `FormField` interface. Get one via `initField()` or interact with fields through the parent form controller.
+A `FieldController` wraps a single form field (a `[data-form-field]` wrapper containing an `input`, `select`, or `textarea`). It implements the [`DomFormField`](/reference/types/#domformfield) interface. Get one via `initField()` or interact with fields through the parent form controller.
+
+For custom field types that replace or augment native controls, extend [`AbstractDomFormField`](/reference/abstract-dom-field/) instead of reimplementing validation and lifecycle. See [Creating Custom Fields](/guides/custom-fields/) for a full walkthrough.
 
 ## Constructor
 
