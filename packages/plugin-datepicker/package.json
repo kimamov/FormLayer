@@ -1,6 +1,6 @@
 {
   "name": "formlayer-plugin-datepicker",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Air Datepicker field plugin for FormLayer",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,7 @@
     "air-datepicker": "^3.6.0"
   },
   "peerDependencies": {
-    "formlayer": "^0.1.0"
+    "formlayer": "^0.2.1"
   },
   "devDependencies": {
     "formlayer": "file:../..",

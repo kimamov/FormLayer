@@ -1,6 +1,6 @@
 {
   "name": "formlayer-plugin-combobox",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Accessible combobox field plugin for FormLayer",
   "type": "module",
   "license": "MIT",
@@ -19,7 +19,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "formlayer": "^0.1.0"
+    "formlayer": "^0.2.1"
   },
   "devDependencies": {
     "formlayer": "file:../..",
