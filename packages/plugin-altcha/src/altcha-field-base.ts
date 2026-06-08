@@ -13,7 +13,8 @@ interface StateChangeDetail {
  * and syncs the verified payload into form state.
  */
 export abstract class AltchaFieldBase extends AbstractDomFormField {
-  protected hiddenInput!: HTMLInputElement;
+  /** Assigned in mount(); `declare` avoids TS class-field init wiping it after super(). */
+  declare protected hiddenInput: HTMLInputElement;
   private widget: AltchaWidget | null = null;
   private liveRegion: HTMLElement | null = null;
   private container: HTMLElement | null = null;
@@ -21,7 +22,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
   private createdContainer = false;
 
   protected mount(): void {
-    this.widget = this.wrapper.querySelector('altcha-widget') as AltchaWidget | null;
+    this.widget = this.findAltchaWidget();
     this.hiddenInput = this.resolveHiddenInput();
     this.setControlElement(this.hiddenInput);
     void this.initWidget();
@@ -49,6 +50,37 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
 
   /** Resolve the ALTCHA challenge (URL string or JSON object). */
   protected abstract resolveChallenge(): string | object | null;
+
+  /**
+   * Find a pre-rendered `<altcha-widget>` inside the wrapper or in the same form
+   * (TYPO3 often uses a full `tx_form_formframework[...][identifier]` name).
+   */
+  protected findAltchaWidget(): AltchaWidget | null {
+    const inWrapper = this.wrapper.querySelector('altcha-widget');
+    if (inWrapper) return inWrapper as AltchaWidget;
+
+    const form = this.wrapper.closest('form');
+    if (!form) return null;
+
+    const widgets = [...form.querySelectorAll('altcha-widget')];
+    if (widgets.length === 0) return null;
+
+    const match = widgets.find((widget) => this.widgetMatchesField(widget));
+    if (match) return match as AltchaWidget;
+
+    return widgets.length === 1 ? (widgets[0] as AltchaWidget) : null;
+  }
+
+  /** Match TYPO3 field names like `tx_form_formframework[form-1][altcha-1]`. */
+  protected widgetMatchesField(widget: Element): boolean {
+    const widgetName = widget.getAttribute('name');
+    if (!widgetName) return false;
+    if (widgetName === this.name) return true;
+    if (widgetName.endsWith(`[${this.name}]`)) return true;
+
+    const bracketed = widgetName.match(/\[([^\]]+)\]$/);
+    return bracketed?.[1] === this.name;
+  }
 
   private resolveHiddenInput(): HTMLInputElement {
     const byName = this.wrapper.querySelector<HTMLInputElement>(
@@ -85,17 +117,17 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     }
 
     const challenge = this.resolveChallenge();
+    if (challenge === null || !this.isValidChallenge(challenge)) {
+      console.warn(
+        `[FormsModule] AltchaField "${this.name}" has no challenge URL or JSON — `
+        + 'ensure the TYPO3 partial renders `<altcha-widget challenge="...">` inside the '
+        + '`[data-form-field]` wrapper, or set `data-altcha-challenge` on the wrapper/hidden input.',
+      );
+      return;
+    }
 
     this.widget = document.createElement('altcha-widget') as AltchaWidget;
-
-    if (typeof challenge === 'string' && challenge.startsWith('http')) {
-      this.widget.setAttribute('challenge', challenge);
-    } else if (challenge) {
-      this.widget.setAttribute(
-        'challenge',
-        typeof challenge === 'string' ? challenge : JSON.stringify(challenge),
-      );
-    }
+    this.applyChallenge(this.widget, challenge);
 
     this.widget.setAttribute('auto', 'onfocus');
     this.widget.setAttribute('hidelogo', 'true');
@@ -159,15 +191,37 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     if (!this.widget) return;
 
     const widgetName = this.widget.getAttribute('name') ?? this.name;
-    const widgetInput = this.wrapper.querySelector<HTMLInputElement>(
-      `input[type="hidden"][name="${CSS.escape(widgetName)}"]`,
-    );
+    const widgetInput = this.findWidgetHiddenInput(widgetName);
     if (widgetInput && widgetInput !== this.hiddenInput) {
       this.hiddenInput = widgetInput;
       this.replaceInput(widgetInput);
     } else if (widgetInput?.value) {
       this.hiddenInput.value = widgetInput.value;
     }
+  }
+
+  private findWidgetHiddenInput(widgetName: string): HTMLInputElement | null {
+    const selector = `input[type="hidden"][name="${CSS.escape(widgetName)}"]`;
+    return (
+      this.widget?.querySelector<HTMLInputElement>(selector)
+      ?? this.wrapper.querySelector<HTMLInputElement>(selector)
+      ?? this.widget?.closest('form')?.querySelector<HTMLInputElement>(selector)
+      ?? null
+    );
+  }
+
+  private isValidChallenge(challenge: string | object | null): boolean {
+    if (!challenge) return false;
+    if (typeof challenge === 'object') return true;
+    if (challenge.startsWith('{')) return true;
+    return challenge.startsWith('http') || challenge.startsWith('/');
+  }
+
+  private applyChallenge(widget: AltchaWidget, challenge: string | object): void {
+    widget.setAttribute(
+      'challenge',
+      typeof challenge === 'string' ? challenge : JSON.stringify(challenge),
+    );
   }
 
   private announceState(state: string): void {

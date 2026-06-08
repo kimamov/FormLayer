@@ -9,10 +9,14 @@ import { AltchaFieldBase } from './altcha-field-base';
  */
 export default class Typo3AltchaField extends AltchaFieldBase {
   protected resolveChallenge(): string | null {
-    const widget = this.wrapper.querySelector('altcha-widget');
+    const widget = this.findAltchaWidget();
     const fromWidget = widget?.getAttribute('challenge');
     if (fromWidget) return fromWidget;
 
-    return this.hiddenInput.getAttribute('data-altcha-challenge');
+    return (
+      this.wrapper.getAttribute('data-altcha-challenge')
+      ?? this.hiddenInput.getAttribute('data-altcha-challenge')
+      ?? this.wrapper.getAttribute('data-altcha-challenge-url')
+    );
   }
 }

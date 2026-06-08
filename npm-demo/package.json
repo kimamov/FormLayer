@@ -10,12 +10,13 @@
   },
   "dependencies": {
     "formlayer": "^0.3.0",
-    "formlayer-plugin-altcha": "^0.3.0",
+    "formlayer-plugin-altcha": "file:../packages/plugin-altcha",
     "formlayer-plugin-client-variants": "^0.3.0",
     "formlayer-plugin-combobox": "^0.3.0",
     "formlayer-plugin-datepicker": "^0.3.0"
   },
   "devDependencies": {
+    "altcha": "^3.0.9",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
   }

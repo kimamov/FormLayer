@@ -63,6 +63,22 @@
           <div id="startDate-errors" class="invalid-feedback"></div>
         </div>
 
+        <!-- TYPO3-style: field wrapper + sibling widget with full form name -->
+        <div
+          data-form-field="altcha-1"
+          data-field-type="altcha"
+          data-validate='[{"type":"NotEmpty","options":{"message":"Please complete the spam check"}}]'
+        >
+          <label for="altcha-1">Spam protection</label>
+          <div id="altcha-1-errors" class="invalid-feedback"></div>
+        </div>
+        <altcha-widget
+          challenge="/api/altcha/challenge"
+          name="tx_form_formframework[registration][altcha-1]"
+          auto="onfocus"
+          configuration='{"hideLogo":true,"hideFooter":true}'
+        ></altcha-widget>
+
         <button type="submit">Register</button>
       </form>
     </div>

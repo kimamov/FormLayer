@@ -150,3 +150,9 @@ button[type='submit'][data-loading] {
   background: var(--accent-bg);
   color: var(--text-h);
 }
+
+.altcha-container,
+altcha-widget {
+  display: block;
+  margin-top: 0.35rem;
+}
