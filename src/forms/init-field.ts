@@ -1,7 +1,7 @@
 import type { FormField, FormFieldClass, FormFieldFactory } from './types';
 import { FieldController } from './field-controller';
 import type { FieldOptions } from './field-options';
-import { isLazyFactory } from './create-field';
+import { isLazyFactory, finalizeField } from './create-field';
 
 export interface InitFieldOptions extends FieldOptions {
   /** Explicit custom field class. Does not use fieldsMap or data-field-type lookup. */
@@ -34,7 +34,7 @@ export function initField(element: HTMLElement, options?: InitFieldOptions): For
   const { field: FieldClass, ...fieldOptions } = options ?? {};
 
   if (FieldClass) {
-    return new FieldClass(wrapper, fieldOptions);
+    return finalizeField(new FieldClass(wrapper, fieldOptions));
   }
 
   return new FieldController(wrapper, fieldOptions);
@@ -58,10 +58,10 @@ export async function initFieldAsync(
 
   if (isLazyFactory(factory)) {
     const { default: Cls } = await factory();
-    return new Cls(wrapper, opts);
+    return finalizeField(new Cls(wrapper, opts));
   }
 
-  return new factory(wrapper, opts);
+  return finalizeField(new factory(wrapper, opts));
 }
 
 const INPUT_SELECTOR = 'input, select, textarea';

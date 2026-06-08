@@ -51,6 +51,8 @@ const comboCtrl = await initFieldAsync(
 );
 ```
 
+`initField` and `initFieldAsync` construct the field and run its DOM setup (`mount()`) in one step, so the returned controller is ready to use immediately. Custom fields built on [`AbstractDomFormField`](/reference/abstract-dom-field/) are initialized this way — **do not** call `new MyField(wrapper)` yourself, as a bare instance is constructed but not mounted.
+
 ## With Custom Options
 
 Pass an `InitFieldOptions` object as the second argument:

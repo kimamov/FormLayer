@@ -9,11 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "formlayer": "^0.2.1",
-    "formlayer-plugin-altcha": "^0.2.1",
-    "formlayer-plugin-client-variants": "^0.2.1",
-    "formlayer-plugin-combobox": "^0.2.1",
-    "formlayer-plugin-datepicker": "^0.2.1"
+    "formlayer": "^0.3.0",
+    "formlayer-plugin-altcha": "^0.3.0",
+    "formlayer-plugin-client-variants": "^0.3.0",
+    "formlayer-plugin-combobox": "^0.3.0",
+    "formlayer-plugin-datepicker": "^0.3.0"
   },
   "devDependencies": {
     "typescript": "~6.0.2",

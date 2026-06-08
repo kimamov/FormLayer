@@ -20,10 +20,11 @@ export abstract class AbstractDomFormField implements DomFormField {
   protected readonly rules: ValidatorRule[];
   protected readonly abortController = new AbortController();
   protected readonly emitter = new FieldEmitter();
-  protected readonly errorPresenter: FieldErrorPresenter<this>;
+  protected errorPresenter!: FieldErrorPresenter<this>;
   protected readonly options: AbstractDomFieldOptions;
 
-  private _state: FieldState;
+  private _initialized = false;
+  private _state!: FieldState;
   private _enabled = true;
   private onChange: ((state: FieldState) => void) | null = null;
   private _serverErrors: string[] = [];
@@ -34,6 +35,19 @@ export abstract class AbstractDomFormField implements DomFormField {
     this.name = wrapper.getAttribute('data-form-field') ?? '';
     this.options = options;
     this.rules = this.parseRules();
+  }
+
+  /**
+   * Completes field setup: runs {@link mount}, wires error presentation, and
+   * captures the initial state. Invoked by the field factories
+   * (`createField` / `initField`) right after construction — once subclass
+   * class fields are initialized — so the overridable {@link mount} never runs
+   * mid-construction. This is internal lifecycle plumbing, not an extension
+   * point: subclasses override {@link mount} et al., never this.
+   */
+  init(): void {
+    if (this._initialized) return;
+    this._initialized = true;
 
     this.mount();
 

@@ -13,8 +13,7 @@ interface StateChangeDetail {
  * and syncs the verified payload into form state.
  */
 export abstract class AltchaFieldBase extends AbstractDomFormField {
-  /** Set in mount(); use declare so subclass field init does not wipe after super(). */
-  declare protected hiddenInput: HTMLInputElement;
+  protected hiddenInput!: HTMLInputElement;
   private widget: AltchaWidget | null = null;
   private liveRegion: HTMLElement | null = null;
   private container: HTMLElement | null = null;
@@ -78,7 +77,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
       return;
     }
 
-    if (this.signal.aborted || !this.hiddenInput) return;
+    if (this.signal.aborted) return;
 
     if (this.widget) {
       this.bindWidget();

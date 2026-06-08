@@ -1,4 +1,5 @@
 import { FieldController } from './field-controller';
+import { AbstractDomFormField } from './abstract-dom-field';
 import type { FormField, FormFieldClass, FormFieldFactory } from './types';
 import type { FieldOptions } from './field-options';
 
@@ -56,6 +57,18 @@ function fieldOpts(options?: CreateFieldOptions): FieldOptions {
 }
 
 /**
+ * Run the deferred {@link AbstractDomFormField.init} step after construction.
+ * Internal to the field-creation paths — keeps `mount()` out of the
+ * constructor so subclass class fields exist before it runs.
+ */
+export function finalizeField(field: FormField): FormField {
+  if (field instanceof AbstractDomFormField) {
+    field.init();
+  }
+  return field;
+}
+
+/**
  * Create a FormField synchronously.
  *
  * If a matching factory is found and it's a class, instantiates it directly.
@@ -74,7 +87,7 @@ export function createField(wrapper: HTMLElement, options?: CreateFieldOptions):
     throw new Error('[FormsModule] Lazy field factory requires createFieldAsync()');
   }
 
-  return new factory(wrapper, opts);
+  return finalizeField(new factory(wrapper, opts));
 }
 
 /**
@@ -93,8 +106,8 @@ export async function createFieldAsync(wrapper: HTMLElement, options?: CreateFie
 
   if (isLazyFactory(factory)) {
     const { default: Cls } = await factory();
-    return new Cls(wrapper, opts);
+    return finalizeField(new Cls(wrapper, opts));
   }
 
-  return new factory(wrapper, opts);
+  return finalizeField(new factory(wrapper, opts));
 }

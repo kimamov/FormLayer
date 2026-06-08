@@ -24,8 +24,7 @@ function phpFormatToAir(php: string): string {
  * the plain text input remains fully functional.
  */
 export default class DatePickerField extends AbstractDomFormField {
-  /** Set in mount(); use declare so subclass field init does not wipe after super(). */
-  declare private textInput: HTMLInputElement;
+  private textInput!: HTMLInputElement;
   private picker: AirDatepicker | null = null;
 
   protected mount(): void {
@@ -78,7 +77,7 @@ export default class DatePickerField extends AbstractDomFormField {
   }
 
   private async initPicker(): Promise<void> {
-    if (this.signal.aborted || !this.textInput) return;
+    if (this.signal.aborted) return;
 
     const phpFormat = this.resolvePhpFormat();
     const airFormat = phpFormatToAir(phpFormat);

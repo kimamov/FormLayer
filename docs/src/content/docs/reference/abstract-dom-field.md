@@ -23,25 +23,24 @@ Built-in plugins such as [combobox](/guides/plugins/#combobox) and [datepicker](
 new AbstractDomFormField(wrapper: HTMLElement, options?: AbstractDomFieldOptions)
 ```
 
-Do not instantiate directly — extend the class and pass `options` through from your constructor:
+Do not instantiate directly. Extend the class, override the hooks, and create instances through `createField()`, `initField()`, or a registered `fieldsMap` entry — those drive the lifecycle for you.
 
 ```typescript
 export default class MyField extends AbstractDomFormField {
-  constructor(wrapper: HTMLElement, options?: AbstractDomFieldOptions) {
-    super(wrapper, options);
+  private control!: HTMLInputElement;
+
+  protected mount(): void {
+    this.control = this.wrapper.querySelector('input')!;
+    this.setControlElement(this.control);
   }
 }
 ```
 
-The constructor reads `data-form-field` from `wrapper`, parses `data-validate`, calls `mount()`, then wires error presentation. If `mount()` does not call `setControlElement()`, construction throws.
-
-Properties assigned in `mount()` must use `declare` (no runtime class field) — see [Subclass hooks](#subclass-hooks).
+The constructor only reads `data-form-field` and parses `data-validate`. Setup that touches the DOM — `mount()`, error presentation, and the initial state snapshot — runs in `init()`, which the field factories call immediately after construction. This keeps the overridable `mount()` out of the constructor, so ordinary class fields like `private control!: HTMLInputElement` work without any special handling. If `mount()` does not call `setControlElement()`, `init()` throws.
 
 ## Subclass hooks
 
-These methods define how your field interacts with the DOM. The base class calls them at the appropriate lifecycle points.
-
-**TypeScript class fields:** `mount()` runs from the parent constructor during `super()`. Subclass field initializers (e.g. `private input!: HTMLInputElement`) run *after* `super()` returns and reset anything `mount()` assigned. Use `declare private input: HTMLInputElement` for properties set only in `mount()` — `declare` emits no runtime initializer.
+These methods define how your field interacts with the DOM. The base class calls them at the appropriate lifecycle points. Assign fields in `mount()` as you normally would — it runs after the instance is fully constructed.
 
 ### `mount(): void` *(required)*
 

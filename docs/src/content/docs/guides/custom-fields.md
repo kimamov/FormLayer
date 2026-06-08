@@ -28,12 +28,13 @@ A field exposes a **canonical string value** through `readValue()`. Validation, 
 
 ```mermaid
 sequenceDiagram
-  participant FC as FormController
+  participant Factory as createField / initField
   participant F as AbstractDomFormField
   participant DOM as DOM
 
-  FC->>F: new MyField(wrapper, options)
-  F->>F: parseRules()
+  Factory->>F: new MyField(wrapper, options)
+  Note over F: constructor — parseRules() only
+  Factory->>F: init()
   F->>F: mount()
   F->>DOM: build UI, setControlElement()
   F->>F: initial FieldState
@@ -42,14 +43,16 @@ sequenceDiagram
   F->>F: markDirty / markTouched
   F->>F: validate()
   F->>F: notifyChange()
-  F->>FC: connect(onChange)
+  F->>F: connect(onChange)
 
-  FC->>F: reset()
+  Factory->>F: reset()
   F->>F: onReset()
 
-  FC->>F: destroy()
+  Factory->>F: destroy()
   F->>F: abort signal, onDestroy()
 ```
+
+The two-phase creation (construct, then `init()`) is what lets you assign DOM references in `mount()` using ordinary class fields. The factory functions always run both phases — you only ever call `createField`, `initField`, or `initFieldAsync`.
 
 ## Step 1 — Markup
 
@@ -395,20 +398,33 @@ Client variants ([`formlayer-plugin-client-variants`](/guides/plugins/#client-va
 
 ## Standalone use
 
-Custom fields work outside a form controller via `initField()`:
+Custom fields work outside a form controller via `initField()`. Pass the class explicitly with the `field` option (standalone fields do not use `data-field-type` or `fieldsMap`):
 
 ```typescript
 import { initField } from 'formlayer';
 import ImageInputWithPreviewField from './fields/image-input-with-preview';
 
-const field = await initField(document.querySelector('[data-form-field="avatar"]')!, {
-  fieldsMap: { 'image-input-with-preview': ImageInputWithPreviewField },
+const field = initField(document.querySelector('[data-form-field="avatar"]')!, {
+  field: ImageInputWithPreviewField,
 });
 
 field.on('change', (state) => {
   console.log(state.value, state.isValid);
 });
 ```
+
+Lazy-load the class with `initFieldAsync()`:
+
+```typescript
+import { initFieldAsync } from 'formlayer';
+
+const field = await initFieldAsync(
+  document.querySelector('[data-form-field="avatar"]')!,
+  () => import('./fields/image-input-with-preview'),
+);
+```
+
+`initField` / `initFieldAsync` construct the field **and** run its `mount()` setup for you. Do not call `new ImageInputWithPreviewField(wrapper)` directly — a bare instance is not mounted (see [Field lifecycle](#field-lifecycle)).
 
 ## Checklist
 

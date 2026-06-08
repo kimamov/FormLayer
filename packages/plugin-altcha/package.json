@@ -1,6 +1,6 @@
 {
   "name": "formlayer-plugin-altcha",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "ALTCHA captcha field plugins for FormLayer",
   "type": "module",
   "license": "MIT",
@@ -26,7 +26,7 @@
     "altcha": "^3.0.9"
   },
   "peerDependencies": {
-    "formlayer": "^0.2.1"
+    "formlayer": "^0.3.0"
   },
   "devDependencies": {
     "formlayer": "file:../..",
