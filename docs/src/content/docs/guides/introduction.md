@@ -21,28 +21,50 @@ Your server renders standard `<form>` HTML. FormLayer enhances it. If JavaScript
 
 ## Architecture
 
+FormLayer has two entry paths: **form controllers** (full `<form>` enhancement) and **standalone fields** (a single `[data-form-field]` without a form wrapper).
+
+```mermaid
+flowchart TB
+  subgraph formPath["Form path — one FormController per form"]
+    direction TB
+    R["formRegistry.init()<br/><i>optional — multi-form, TYPO3 remount</i>"]
+    CFC["createFormController()<br/><i>direct — single form, no registry</i>"]
+    FC["FormController"]
+    R --> FC
+    CFC --> FC
+
+    FC --> Scan["discoverFields() + MutationObserver<br/>on [data-form-field] wrappers"]
+    Scan --> CF["createField() / createFieldAsync()"]
+
+    Map["registerFieldType() global<br/>+ per-form fieldsMap"] -.-> CF
+    CF --> Default["FieldController<br/><i>no data-field-type match</i>"]
+    CF --> Custom["FormField subclass<br/><i>combobox, datepicker, your plugin</i><br/>often extends AbstractDomFormField"]
+
+    FC --> Plugins["FormPlugin<br/><i>registry.registerFormPlugin()</i>"]
+    FC --> Events["EventBus — field:* / form:* events"]
+  end
+
+  subgraph standalonePath["Standalone path — single field, no FormController"]
+    direction TB
+    IF["initField() / initFieldAsync()"]
+    IF --> SDefault["FieldController<br/><i>default</i>"]
+    IF --> SCustom["Explicit field class<br/><i>{ field: MyField }</i>"]
+  end
 ```
-┌─────────────────────────────────────────────┐
-│  Form path                                  │
-│  FormRegistry (optional) / createFormController│
-│  └── FormController (per <form>)            │
-│      ├── createField → FieldController      │
-│      ├── createField → custom FormField     │
-│      │   (via fieldsMap / data-field-type)  │
-│      ├── FormPlugin (e.g. client-variants)  │
-│      └── EventBus (form/field events)       │
-├─────────────────────────────────────────────┤
-│  Standalone path (no registry)              │
-│  initField / initFieldAsync                 │
-│  └── FieldController or explicit { field }  │
-└─────────────────────────────────────────────┘
-```
+
+**Form path.** `FormRegistry` discovers forms and attaches globally registered `FormPlugin` instances; you can also call `createFormController()` directly for a single form. Each `FormController` scans for `[data-form-field]` wrappers, resolves the implementation via `createField()` (using `data-field-type` + merged `fieldsMap` / `registerFieldType()`), and wires field state into form-level validation, submit handling, and events.
+
+**Standalone path.** `initField()` enhances one field outside any form. It does not use the registry, does not auto-resolve `data-field-type`, and does not load form plugins — pass `{ field: MyFieldClass }` or use `initFieldAsync()` for code-split custom types. See [Standalone Fields](/guides/standalone-fields/).
+
+Custom field plugins typically extend [`AbstractDomFormField`](/reference/abstract-dom-field/) rather than implementing [`FormField`](/reference/types/#formfield-interface) from scratch. See [Creating Custom Fields](/guides/custom-fields/).
 
 ## Key Concepts
 
 ### Forms and Fields
 
-A **form** is any `<form>` element with an `id`. A **field** is any element inside a form with the `data-form-field` attribute. Each field must contain an `input`, `select`, or `textarea`.
+A **form** is any `<form>` element with an `id` (required when using `FormRegistry`). A **field** is any element with the `data-form-field` attribute — usually inside a form, but also usable standalone via `initField()`.
+
+Standard fields contain an `input`, `select`, or `textarea`. Custom field types (`data-field-type`) replace the default [`FieldController`](/reference/field-controller/) with a [`FormField`](/reference/types/#formfield-interface) implementation — typically [`AbstractDomFormField`](/reference/abstract-dom-field/) for DOM-backed plugins.
 
 ```html
 <form id="my-form">
@@ -55,9 +77,9 @@ A **form** is any `<form>` element with an `id`. A **field** is any element insi
 
 ### The Registry
 
-The `FormRegistry` discovers forms in the DOM and manages their lifecycle — useful for multi-form pages and TYPO3 remounting. For a single form, you can use `createFormController()` directly without the registry.
+The `FormRegistry` discovers forms in the DOM, creates a `FormController` per form, and loads registered `FormPlugin` factories — useful for multi-form pages and TYPO3 remounting. For a single form, call `createFormController()` directly without the registry.
 
-Standalone fields outside a form use `initField()` — see [Standalone Fields](/guides/standalone-fields/).
+Global custom field types are registered with `registerFieldType()` and merged into each form's `fieldsMap`. Per-form overrides pass `fieldsMap` in `FormControllerOptions`.
 
 ### Progressive Enhancement
 
