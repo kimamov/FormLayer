@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FormLayer npm demo</title>
+  </head>
+  <body>
+    <div id="app">
+      <h1>FormLayer npm demo</h1>
+      <p>Consumes <code>formlayer</code> and plugins from npm, initialized via <code>initTypo3Forms()</code>.</p>
+
+      <form id="registration" action="/api/registration" method="post">
+        <div
+          data-form-field="accountType"
+          data-validate='[{"type":"NotEmpty","options":{"message":"Please select an account type"}}]'
+        >
+          <label for="accountType">Account type</label>
+          <select id="accountType" name="accountType">
+            <option value="">Select…</option>
+            <option value="personal">Personal</option>
+            <option value="business">Business</option>
+          </select>
+          <div id="accountType-errors" class="invalid-feedback"></div>
+        </div>
+
+        <div
+          data-form-field="companyName"
+          data-client-variants='[{"condition": "formValue(\"accountType\") === \"business\"", "enabled": true}]'
+          data-validate='[{"type":"NotEmpty","options":{"message":"Company name is required"}}]'
+        >
+          <label for="companyName">Company name</label>
+          <input id="companyName" name="companyName" type="text" />
+          <div id="companyName-errors" class="invalid-feedback"></div>
+        </div>
+
+        <div
+          data-form-field="country"
+          data-field-type="combobox"
+          data-validate='[{"type":"NotEmpty","options":{"message":"Please select a country"}}]'
+        >
+          <label for="country">Country</label>
+          <select id="country" name="country">
+            <option value="">Select…</option>
+            <option value="de">Germany</option>
+            <option value="at">Austria</option>
+            <option value="ch">Switzerland</option>
+            <option value="fr">France</option>
+          </select>
+          <div id="country-errors" class="invalid-feedback"></div>
+        </div>
+
+        <div
+          data-form-field="startDate"
+          data-field-type="datepicker"
+          data-validate='[{"type":"DateTime","options":{"message":"Enter a valid date"}}]'
+        >
+          <label for="startDate">Start date</label>
+          <div data-field-type="datepicker">
+            <input id="startDate" type="text" name="startDate" />
+            <input type="hidden" name="startDate[dateFormat]" value="d.m.Y" />
+          </div>
+          <div id="startDate-errors" class="invalid-feedback"></div>
+        </div>
+
+        <button type="submit">Register</button>
+      </form>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

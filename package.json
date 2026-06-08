@@ -1,6 +1,6 @@
 {
   "name": "formlayer",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Type-safe progressive enhancement for server-rendered HTML forms",
   "type": "module",
   "license": "MIT",
@@ -37,11 +37,14 @@
       "types": "./dist/forms/validators/index.d.ts",
       "import": "./dist/forms/validators/index.js"
     },
-    "./forms.css": "./src/forms/forms.css"
+    "./forms.css": {
+      "style": "./dist/forms/forms.css",
+      "import": "./dist/forms/forms.css",
+      "default": "./dist/forms/forms.css"
+    }
   },
   "files": [
     "dist",
-    "src/forms/forms.css",
     "README.md",
     "LICENSE"
   ],

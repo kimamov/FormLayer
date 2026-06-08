@@ -1,6 +1,6 @@
 {
   "name": "formlayer-plugin-client-variants",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Conditional field visibility form plugin for FormLayer",
   "type": "module",
   "license": "MIT",
@@ -17,6 +17,9 @@
   "scripts": {
     "build": "vite build",
     "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "formlayer": "^0.2.1"
   },
   "peerDependencies": {
     "formlayer": "^0.2.1"
