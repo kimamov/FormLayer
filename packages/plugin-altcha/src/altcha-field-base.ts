@@ -13,18 +13,18 @@ interface StateChangeDetail {
  * and syncs the verified payload into form state.
  */
 export abstract class AltchaFieldBase extends AbstractDomFormField {
-  protected hiddenInput!: HTMLInputElement;
+  /** Assigned in mount(); `declare` avoids TS class-field init wiping it after super(). */
+  declare protected hiddenInput: HTMLInputElement;
   private widget: AltchaWidget | null = null;
   private liveRegion: HTMLElement | null = null;
   private container: HTMLElement | null = null;
+  private createdHiddenInput = false;
+  private createdContainer = false;
 
   protected mount(): void {
-    const input = this.wrapper.querySelector<HTMLInputElement>('input[type="hidden"]');
-    if (!input) {
-      throw new Error(`[FormsModule] AltchaField "${this.name}" requires a hidden input`);
-    }
-    this.hiddenInput = input;
-    this.setControlElement(input);
+    this.widget = this.wrapper.querySelector('altcha-widget') as AltchaWidget | null;
+    this.hiddenInput = this.resolveHiddenInput();
+    this.setControlElement(this.hiddenInput);
     void this.initWidget();
   }
 
@@ -37,7 +37,12 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
   }
 
   protected onDestroy(): void {
-    this.container?.remove();
+    if (this.createdContainer) {
+      this.container?.remove();
+    }
+    if (this.createdHiddenInput) {
+      this.hiddenInput?.remove();
+    }
     this.widget = null;
     this.liveRegion = null;
     this.container = null;
@@ -46,12 +51,37 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
   /** Resolve the ALTCHA challenge (URL string or JSON object). */
   protected abstract resolveChallenge(): string | object | null;
 
+  private resolveHiddenInput(): HTMLInputElement {
+    const byName = this.wrapper.querySelector<HTMLInputElement>(
+      `input[type="hidden"][name="${CSS.escape(this.name)}"]`,
+    );
+    if (byName) return byName;
+
+    const anyHidden = this.wrapper.querySelector<HTMLInputElement>('input[type="hidden"]');
+    if (anyHidden) return anyHidden;
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = this.name;
+    input.value = '';
+    this.wrapper.appendChild(input);
+    this.createdHiddenInput = true;
+    return input;
+  }
+
   private async initWidget(): Promise<void> {
     try {
       await import('altcha');
       await this.loadI18n();
     } catch (err) {
       console.warn(`[FormsModule] AltchaField "${this.name}" failed to load altcha:`, err);
+      return;
+    }
+
+    if (this.signal.aborted || !this.hiddenInput) return;
+
+    if (this.widget) {
+      this.bindWidget();
       return;
     }
 
@@ -86,6 +116,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     this.container = document.createElement('div');
     this.container.className = 'altcha-container';
     this.container.append(this.widget, this.liveRegion);
+    this.createdContainer = true;
 
     this.hiddenInput.insertAdjacentElement('afterend', this.container);
     this.bindWidget();
@@ -99,6 +130,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
       const detail = (ev as CustomEvent<StateChangeDetail>).detail;
       if (!detail) return;
 
+      this.syncHiddenInputFromWidget();
       this.announceState(detail.state);
 
       if (detail.state === 'verified' && detail.payload) {
@@ -118,7 +150,25 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
       if (checkbox) {
         checkbox.disabled = true;
       }
+
+      this.syncHiddenInputFromWidget();
     }, { signal });
+  }
+
+  /** ALTCHA may create or update the named hidden input inside the widget. */
+  private syncHiddenInputFromWidget(): void {
+    if (!this.widget) return;
+
+    const widgetName = this.widget.getAttribute('name') ?? this.name;
+    const widgetInput = this.wrapper.querySelector<HTMLInputElement>(
+      `input[type="hidden"][name="${CSS.escape(widgetName)}"]`,
+    );
+    if (widgetInput && widgetInput !== this.hiddenInput) {
+      this.hiddenInput = widgetInput;
+      this.replaceInput(widgetInput);
+    } else if (widgetInput?.value) {
+      this.hiddenInput.value = widgetInput.value;
+    }
   }
 
   private announceState(state: string): void {
