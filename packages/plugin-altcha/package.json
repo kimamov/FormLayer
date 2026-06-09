@@ -1,6 +1,6 @@
 {
   "name": "formlayer-plugin-altcha",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "ALTCHA captcha field plugins for FormLayer",
   "type": "module",
   "license": "MIT",
