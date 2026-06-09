@@ -1,87 +1,78 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FormLayer npm demo</title>
-  </head>
-  <body>
-    <div id="app">
-      <h1>FormLayer npm demo</h1>
-      <p>Consumes <code>formlayer</code> and plugins from npm, initialized via <code>initTypo3Forms()</code>.</p>
 
-      <form id="registration" action="/api/registration" method="post">
-        <div
-          data-form-field="accountType"
-          data-validate='[{"type":"NotEmpty","options":{"message":"Please select an account type"}}]'
-        >
-          <label for="accountType">Account type</label>
-          <select id="accountType" name="accountType">
-            <option value="">Select…</option>
-            <option value="personal">Personal</option>
-            <option value="business">Business</option>
-          </select>
-          <div id="accountType-errors" class="invalid-feedback"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FormLayer npm demo</title>
+</head>
+
+<body>
+  <div id="app">
+    <h1>FormLayer npm demo</h1>
+    <p>Consumes <code>formlayer</code> and plugins from npm, initialized via <code>initTypo3Forms()</code>.</p>
+
+    <form id="registration" action="/api/registration" method="post">
+      <div data-form-field="accountType"
+        data-validate='[{"type":"NotEmpty","options":{"message":"Please select an account type"}}]'>
+        <label for="accountType">Account type</label>
+        <select id="accountType" name="accountType">
+          <option value="">Select…</option>
+          <option value="personal">Personal</option>
+          <option value="business">Business</option>
+        </select>
+        <div id="accountType-errors" class="invalid-feedback"></div>
+      </div>
+
+      <div data-form-field="companyName"
+        data-client-variants='[{"condition": "formValue(\"accountType\") === \"business\"", "enabled": true}]'
+        data-validate='[{"type":"NotEmpty","options":{"message":"Company name is required"}}]'>
+        <label for="companyName">Company name</label>
+        <input id="companyName" name="companyName" type="text" />
+        <div id="companyName-errors" class="invalid-feedback"></div>
+      </div>
+
+      <div data-form-field="country" data-field-type="combobox"
+        data-validate='[{"type":"NotEmpty","options":{"message":"Please select a country"}}]'>
+        <label for="country">Country</label>
+        <select id="country" name="country">
+          <option value="">Select…</option>
+          <option value="de">Germany</option>
+          <option value="at">Austria</option>
+          <option value="ch">Switzerland</option>
+          <option value="fr">France</option>
+        </select>
+        <div id="country-errors" class="invalid-feedback"></div>
+      </div>
+
+      <div data-form-field="startDate" data-field-type="datepicker"
+        data-validate='[{"type":"DateTime","options":{"message":"Enter a valid date"}}]'>
+        <label for="startDate">Start date</label>
+        <div data-field-type="datepicker">
+          <input id="startDate" type="text" name="startDate" />
+          <input type="hidden" name="startDate[dateFormat]" value="d.m.Y" />
         </div>
+        <div id="startDate-errors" class="invalid-feedback"></div>
+      </div>
 
-        <div
-          data-form-field="companyName"
-          data-client-variants='[{"condition": "formValue(\"accountType\") === \"business\"", "enabled": true}]'
-          data-validate='[{"type":"NotEmpty","options":{"message":"Company name is required"}}]'
-        >
-          <label for="companyName">Company name</label>
-          <input id="companyName" name="companyName" type="text" />
-          <div id="companyName-errors" class="invalid-feedback"></div>
-        </div>
+      <!-- TYPO3-style: field wrapper + sibling widget with full form name -->
+      <div class="form-element form-element-email mb-3" data-form-field="altcha-1" data-validate=""
+        data-field-type="altcha">
+        <input type="hidden" name="tx_form_formframework[test-2][altcha-1]" id="test-2-altcha-1" value=""
+          data-altcha-challenge="/?type=1768669000">
+        <noscript>
+          <input type="hidden" name="__altcha_nojs" value="1" />
+        </noscript>
+        <span id="test-2-altcha-1-errors" class="invalid-feedback" role="alert">
+        </span>
+      </div>
+      <!-- <altcha-widget challenge="/api/altcha/challenge" name="tx_form_formframework[registration][altcha-1]"
+        auto="onfocus" configuration='{"hideLogo":true,"hideFooter":true}'></altcha-widget> -->
 
-        <div
-          data-form-field="country"
-          data-field-type="combobox"
-          data-validate='[{"type":"NotEmpty","options":{"message":"Please select a country"}}]'
-        >
-          <label for="country">Country</label>
-          <select id="country" name="country">
-            <option value="">Select…</option>
-            <option value="de">Germany</option>
-            <option value="at">Austria</option>
-            <option value="ch">Switzerland</option>
-            <option value="fr">France</option>
-          </select>
-          <div id="country-errors" class="invalid-feedback"></div>
-        </div>
+      <button type="submit">Register</button>
+    </form>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
 
-        <div
-          data-form-field="startDate"
-          data-field-type="datepicker"
-          data-validate='[{"type":"DateTime","options":{"message":"Enter a valid date"}}]'
-        >
-          <label for="startDate">Start date</label>
-          <div data-field-type="datepicker">
-            <input id="startDate" type="text" name="startDate" />
-            <input type="hidden" name="startDate[dateFormat]" value="d.m.Y" />
-          </div>
-          <div id="startDate-errors" class="invalid-feedback"></div>
-        </div>
-
-        <!-- TYPO3-style: field wrapper + sibling widget with full form name -->
-        <div
-          data-form-field="altcha-1"
-          data-field-type="altcha"
-          data-validate='[{"type":"NotEmpty","options":{"message":"Please complete the spam check"}}]'
-        >
-          <label for="altcha-1">Spam protection</label>
-          <div id="altcha-1-errors" class="invalid-feedback"></div>
-        </div>
-        <altcha-widget
-          challenge="/api/altcha/challenge"
-          name="tx_form_formframework[registration][altcha-1]"
-          auto="onfocus"
-          configuration='{"hideLogo":true,"hideFooter":true}'
-        ></altcha-widget>
-
-        <button type="submit">Register</button>
-      </form>
-    </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
 </html>

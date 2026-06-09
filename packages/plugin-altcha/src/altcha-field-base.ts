@@ -88,7 +88,14 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     );
     if (byName) return byName;
 
-    const anyHidden = this.wrapper.querySelector<HTMLInputElement>('input[type="hidden"]');
+    // TYPO3: tx_form_formframework[form-1][field-id]
+    const byBracketedName = this.wrapper.querySelector<HTMLInputElement>(
+      `input[type="hidden"][name$="[${CSS.escape(this.name)}]"]`,
+    );
+    if (byBracketedName) return byBracketedName;
+
+    const anyHidden = [...this.wrapper.querySelectorAll<HTMLInputElement>('input[type="hidden"]')]
+      .find((input) => input.name !== '__altcha_nojs');
     if (anyHidden) return anyHidden;
 
     const input = document.createElement('input');
@@ -186,18 +193,15 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     }, { signal });
   }
 
-  /** ALTCHA may create or update the named hidden input inside the widget. */
+  /** Copy the verified payload from ALTCHA's internal input into the form field input. */
   private syncHiddenInputFromWidget(): void {
     if (!this.widget) return;
 
     const widgetName = this.widget.getAttribute('name') ?? this.name;
     const widgetInput = this.findWidgetHiddenInput(widgetName);
-    if (widgetInput && widgetInput !== this.hiddenInput) {
-      this.hiddenInput = widgetInput;
-      this.replaceInput(widgetInput);
-    } else if (widgetInput?.value) {
-      this.hiddenInput.value = widgetInput.value;
-    }
+    if (!widgetInput?.value || widgetInput === this.hiddenInput) return;
+
+    this.hiddenInput.value = widgetInput.value;
   }
 
   private findWidgetHiddenInput(widgetName: string): HTMLInputElement | null {
