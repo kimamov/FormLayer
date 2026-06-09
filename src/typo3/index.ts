@@ -5,7 +5,7 @@ import { createTypo3Submit } from './submit';
 import type { Typo3FormsOptions, Typo3FormsApi } from './types';
 import type { FormSubmitFunction, RegistryEventHandler } from '../forms/types';
 
-export { createTypo3Submit } from './submit';
+export { createTypo3Submit, isTypo3AjaxSubmitEnabled } from './submit';
 export type { Typo3SubmitDeps } from './submit';
 export type { Typo3FormsOptions, Typo3FormsHooks, Typo3AjaxFormResponse, Typo3FormsApi } from './types';
 

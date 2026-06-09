@@ -13,11 +13,22 @@ export interface Typo3SubmitDeps {
   unmount?: Typo3UnmountFn;
 }
 
+/** TYPO3 sets `data-ajax="1"` only when AJAX submission is enabled; all other values use native POST. */
+export function isTypo3AjaxSubmitEnabled(formEl: HTMLFormElement): boolean {
+  const value = formEl.dataset.ajax;
+  return value === '1' || value === 'true';
+}
+
 export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDeps): FormSubmitFunction {
   return async (ctx) => {
     const { formEl, formData, signal, fallbackToNative, applyValidationErrors, redirect } = ctx;
 
     if (hooks?.onBeforeSubmit?.(ctx) === false) {
+      return;
+    }
+
+    if (!isTypo3AjaxSubmitEnabled(formEl)) {
+      fallbackToNative();
       return;
     }
 
