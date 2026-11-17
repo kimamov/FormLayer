@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FormLayer playground</title>
+  <link rel="stylesheet" href="/src/playground.css">
+</head>
+<body>
+<main>
+  <h1>FormLayer playground</h1>
+  <p>Server-rendered form scenarios for building and checking FormLayer features. Each page is plain HTML the way a CMS would render it. A mock backend at <code>/api/forms/*</code> answers like the TYPO3 sitepackage middleware.</p>
+  <ol>
+    <li><a href="/scenarios/01-contact.html">Contact</a>: the baseline. Required fields, a radio group, a consent checkbox, a server-only rule and a form-level server error.</li>
+    <li><a href="/scenarios/02-address.html">Address</a>: nested field names (<code>billing[city]</code>) and a whole fieldset that depends on a checkbox.</li>
+    <li><a href="/scenarios/03-conditional.html">Conditional fields</a>: radio-driven fields, "other, please specify", and chained conditions.</li>
+    <li><a href="/scenarios/04-repeatable.html">Repeatable group</a>: add or remove participants, with per-row server errors.</li>
+    <li><a href="/scenarios/05-cross-field.html">Cross-field rules</a>: password confirmation, a date range, and "phone or backup email".</li>
+    <li><a href="/scenarios/06-multistep.html">Multistep</a>: steps rendered by the server, a Back button, and server errors on step 2.</li>
+    <li><a href="/scenarios/07-widgets.html">Widgets</a>: a checkbox group with limits, a combobox with groups and flags, a file upload.</li>
+  </ol>
+  <p>Run <code>npm run playground:check</code> to record what the current library supports in <code>playground/CAPABILITIES.md</code>.</p>
+</main>
+</body>
+</html>

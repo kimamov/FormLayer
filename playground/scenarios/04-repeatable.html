@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Repeatable group · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="/src/integrator/repeatable.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="repeatable-title">Workshop registration</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> rows added and removed from a <code>&lt;template&gt;</code>, row fields named <code>participants[0][email]</code> ↔ field <code>participants.0.email</code>, per-row server errors, group limits (1 to 5 rows), and focus and announcements. The add/remove behaviour is integrator code (<code>src/integrator/repeatable.ts</code>) because FormLayer has no repeatable groups.</p>
+    <p><strong>Try:</strong> give two participants the same email address. The server rejects the second one.</p>
+  </aside>
+
+  <form id="repeatable" action="/api/forms/repeatable" method="post" data-ajax="1" aria-labelledby="repeatable-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <div class="field" data-form-field="organizerEmail"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter the organizer’s email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+      <label for="organizer-email">Organizer email <span aria-hidden="true">*</span></label>
+      <input id="organizer-email" name="organizerEmail" type="email" autocomplete="email" required autocorrect="off" autocapitalize="none" spellcheck="false">
+      <p id="organizer-email-errors" class="invalid-feedback"></p>
+    </div>
+
+    <section aria-labelledby="participants-title" data-repeatable data-min="1" data-max="5">
+      <h2 id="participants-title">Participants</h2>
+      <p class="hint">1 to 5 participants.</p>
+
+      <div data-repeatable-list>
+        <fieldset class="repeatable-item" data-repeatable-item>
+          <legend>Participant <span data-repeatable-number>1</span></legend>
+          <div class="field" data-form-field="participants.0.name"
+               data-validate='[{"type":"NotEmpty","options":{"message":"Enter the participant’s name."}}]'>
+            <label for="participants-0-name">Full name <span aria-hidden="true">*</span></label>
+            <input id="participants-0-name" name="participants[0][name]" type="text" autocomplete="off" required>
+            <p id="participants-0-name-errors" class="invalid-feedback"></p>
+          </div>
+          <div class="field" data-form-field="participants.0.email"
+               data-validate='[{"type":"NotEmpty","options":{"message":"Enter the participant’s email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+            <label for="participants-0-email">Email <span aria-hidden="true">*</span></label>
+            <input id="participants-0-email" name="participants[0][email]" type="email" autocomplete="off" required autocorrect="off" autocapitalize="none" spellcheck="false">
+            <p id="participants-0-email-errors" class="invalid-feedback"></p>
+          </div>
+          <button type="button" class="secondary" data-repeatable-remove hidden>Remove participant</button>
+        </fieldset>
+      </div>
+
+      <template data-repeatable-template>
+        <fieldset class="repeatable-item" data-repeatable-item>
+          <legend>Participant <span data-repeatable-number></span></legend>
+          <div class="field" data-form-field="participants.__INDEX__.name"
+               data-validate='[{"type":"NotEmpty","options":{"message":"Enter the participant’s name."}}]'>
+            <label for="participants-__INDEX__-name">Full name <span aria-hidden="true">*</span></label>
+            <input id="participants-__INDEX__-name" name="participants[__INDEX__][name]" type="text" autocomplete="off" required>
+            <p id="participants-__INDEX__-name-errors" class="invalid-feedback"></p>
+          </div>
+          <div class="field" data-form-field="participants.__INDEX__.email"
+               data-validate='[{"type":"NotEmpty","options":{"message":"Enter the participant’s email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+            <label for="participants-__INDEX__-email">Email <span aria-hidden="true">*</span></label>
+            <input id="participants-__INDEX__-email" name="participants[__INDEX__][email]" type="email" autocomplete="off" required autocorrect="off" autocapitalize="none" spellcheck="false">
+            <p id="participants-__INDEX__-email-errors" class="invalid-feedback"></p>
+          </div>
+          <button type="button" class="secondary" data-repeatable-remove hidden>Remove participant</button>
+        </fieldset>
+      </template>
+
+      <button type="button" class="secondary" data-repeatable-add hidden>Add participant</button>
+      <p class="visually-hidden" role="status" data-repeatable-status></p>
+    </section>
+
+    <div class="actions">
+      <button type="submit">Register</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

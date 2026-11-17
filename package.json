@@ -57,7 +57,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "docs:dev": "npm run build:all && cd docs && npm run dev",
-    "docs:build": "npm run build:all && cd docs && npm run build"
+    "docs:build": "npm run build:all && cd docs && npm run build",
+    "playground": "vite --config playground/vite.config.ts",
+    "playground:check": "node playground/check.mjs"
   },
   "workspaces": [
     "packages/*"

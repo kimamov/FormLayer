@@ -30,8 +30,16 @@ Tracking issue: [`roadmap/issues/00-tracking.md`](roadmap/issues/00-tracking.md)
 | 5 | DOM events, submission result, form-level errors, plugins | [06](roadmap/issues/06-events-submission.md) | 1 |
 | 6 | Combobox v2: markup-first, optgroups, render hooks | [07](roadmap/issues/07-combobox-v2.md) | 1, 2 |
 | 7 | Scoped base CSS and per-plugin CSS | [08](roadmap/issues/08-css.md) | — |
+| 8 | Conditional logic: groups, chained conditions, no flash on load | [09](roadmap/issues/09-conditional-logic.md) | 1, 5 |
+| 9 | Repeatable field groups | [10](roadmap/issues/10-repeatable-groups.md) | 1, 2, 5 |
 
 Milestones 5 and 7 can run in parallel with 2–4.
+
+## Playground and capability check
+
+[`playground/`](playground/) holds server-rendered form scenarios: contact, address, conditional fields, repeatable group, cross-field rules, multistep and widgets. A mock TYPO3-style backend and a Playwright capability check (`npm run playground:check`) go with them. Every milestone lists the checks it must turn green.
+
+The baseline is **16 of 40 checks passing** ([CAPABILITIES.md](playground/CAPABILITIES.md), analysis in [FINDINGS.md](playground/FINDINGS.md)). Milestones 8 and 9 came out of this.
 
 ---
 
@@ -47,6 +55,10 @@ These are bugs in the current 0.3.x line. They are fixed without breaking the AP
 | `FileSize` doesn't work in custom fields | `src/forms/abstract-dom-field.ts:193` | `__files` is never passed to the validators. |
 | `finish()` doesn't unregister the form | `src/forms/form-controller.ts:356` | The registry keeps a destroyed controller. |
 | Async validators are skipped | `src/forms/validators/index.ts:61` | A form passes even when an async rule fails. In 0.4 this is documented and logged as an error. The real fix is in milestone 2. |
+| Radio and checkbox groups only react to their first control | `src/forms/field-controller.ts` `bind()` | Choosing the 2nd option directly doesn't update the value or the conditions (playground C10, K2, W2). |
+| `formnovalidate` is ignored | `src/forms/form-controller.ts` submit handler | Multistep Back buttons are blocked by validation (M3). |
+| `required` is stripped from inputs | `FieldController.disableNativeValidation()` | Screen readers no longer announce "required" (C2). |
+| TYPO3 `Count` and `MimeType` are missing | `src/forms/validators/` | These TYPO3 rules silently pass (W1, W6). |
 
 Housekeeping in the same release:
 
@@ -196,6 +208,18 @@ Playwright tests cover keyboard and ARIA behaviour.
 - An optional accessible error summary with a live region.
 
 ---
+
+## 8 · Conditional logic
+
+- Conditions on whole groups (`data-client-variants` on a fieldset).
+- Hidden fields count as empty in conditions, so chains settle.
+- Conditions are evaluated before first paint (no flash).
+
+## 9 · Repeatable field groups
+
+- Built-in add and remove from a `<template>`, numbering, min/max, focus and announcements.
+- The group registers as a field, so `Count` rules and group-level server errors have a place to render.
+- Replaces the 38 lines of integrator code in the playground.
 
 ## Deliberately not doing
 

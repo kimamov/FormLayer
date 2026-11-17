@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vite/client"],
+    "paths": {
+      "formlayer": ["../src/index.ts"],
+      "formlayer/typo3": ["../src/typo3/index.ts"],
+      "formlayer-plugin-combobox": ["../packages/plugin-combobox/src/index.ts"],
+      "formlayer-plugin-client-variants": ["../packages/plugin-client-variants/src/index.ts"]
+    }
+  },
+  "include": ["src", "server", "vite.config.ts"]
+}

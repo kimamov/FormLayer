@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cross-field rules · FormLayer playground</title>
+  <script type="module" src="/src/integrator/cross-field-validators.ts"></script>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="cross-field-title">Create an account</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> rules that depend on another field (confirm password, end date not before start date), re-validating the dependent field when the other one changes, and a form-level rule (<code>data-validate-form</code>: phone <em>or</em> backup email). The <code>Equals</code> and <code>DateNotBefore</code> validators are integrator workarounds (<code>src/integrator/cross-field-validators.ts</code>).</p>
+    <p><strong>Try:</strong> make both passwords match, then change the first one. The confirmation should become invalid.</p>
+  </aside>
+
+  <form id="cross-field" action="/api/forms/cross-field" method="post" data-ajax="1" aria-labelledby="cross-field-title"
+        data-validate-form='[{"type":"AtLeastOne","options":{"fields":["phone","backupEmail"],"message":"Give us a phone number or a backup email address so we can reach you."}}]'>
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <div class="field" data-form-field="email"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+      <label for="email">Email <span aria-hidden="true">*</span></label>
+      <input id="email" name="email" type="email" autocomplete="username" required autocorrect="off" autocapitalize="none" spellcheck="false">
+      <p id="email-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="password"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Create a password."}},{"type":"StringLength","options":{"minimum":8,"message":"Use 8 or more characters."}}]'>
+      <label for="password">Password <span aria-hidden="true">*</span></label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-hint">
+      <p id="password-hint" class="hint">8 or more characters.</p>
+      <p id="password-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="passwordRepeat"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Repeat your password."}},{"type":"Equals","options":{"field":"password","message":"The passwords don’t match."}}]'>
+      <label for="password-repeat">Repeat password <span aria-hidden="true">*</span></label>
+      <input id="password-repeat" name="passwordRepeat" type="password" autocomplete="new-password" required>
+      <p id="password-repeat-errors" class="invalid-feedback"></p>
+    </div>
+
+    <fieldset>
+      <legend>Trial period</legend>
+      <div class="field" data-form-field="startDate"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Choose a start date."}}]'>
+        <label for="start-date">Start date <span aria-hidden="true">*</span></label>
+        <input id="start-date" name="startDate" type="date" required>
+        <p id="start-date-errors" class="invalid-feedback"></p>
+      </div>
+      <div class="field" data-form-field="endDate"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Choose an end date."}},{"type":"DateNotBefore","options":{"field":"startDate","message":"The end date must be on or after the start date."}}]'>
+        <label for="end-date">End date <span aria-hidden="true">*</span></label>
+        <input id="end-date" name="endDate" type="date" required>
+        <p id="end-date-errors" class="invalid-feedback"></p>
+      </div>
+    </fieldset>
+
+    <fieldset aria-describedby="reach-hint">
+      <legend>How can we reach you?</legend>
+      <p id="reach-hint" class="hint">Give at least one.</p>
+      <div class="field" data-form-field="phone">
+        <label for="phone">Phone</label>
+        <input id="phone" name="phone" type="tel" autocomplete="tel">
+        <p id="phone-errors" class="invalid-feedback"></p>
+      </div>
+      <div class="field" data-form-field="backupEmail"
+           data-validate='[{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+        <label for="backup-email">Backup email</label>
+        <input id="backup-email" name="backupEmail" type="email" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <p id="backup-email-errors" class="invalid-feedback"></p>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit">Create account</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>
