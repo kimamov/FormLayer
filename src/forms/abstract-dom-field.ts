@@ -52,7 +52,7 @@ export abstract class AbstractDomFormField implements DomFormField {
     this.mount();
 
     if (!this.input) {
-      throw new Error(`[FormsModule] No control element set in field "${this.name}"`);
+      throw new Error(`[FormLayer] No control element set in field "${this.name}"`);
     }
 
     this.errorPresenter = new FieldErrorPresenter(
@@ -190,7 +190,11 @@ export abstract class AbstractDomFormField implements DomFormField {
     this._serverErrorValue = null;
 
     const defaultValidate = (): FieldValidationResult => {
-      const failures = runValidators(this.rules, value, {});
+      const extraOptions: Record<string, unknown> = {};
+      if (this.input instanceof HTMLInputElement && this.input.type === 'file') {
+        extraOptions['__files'] = this.input.files;
+      }
+      const failures = runValidators(this.rules, value, extraOptions);
       const errors = failures.map((f) => f.message);
       return { isValid: errors.length === 0, errors };
     };
@@ -277,7 +281,7 @@ export abstract class AbstractDomFormField implements DomFormField {
       if (!Array.isArray(parsed)) return [];
       return parsed as ValidatorRule[];
     } catch {
-      console.warn(`[FormsModule] Invalid data-validate JSON on field "${this.name}"`);
+      console.warn(`[FormLayer] Invalid data-validate JSON on field "${this.name}"`);
       return [];
     }
   }

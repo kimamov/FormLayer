@@ -11,6 +11,8 @@ import { number } from './number';
 import { dateTime } from './datetime';
 import { dateRange } from './date-range';
 import { fileSize } from './file-size';
+import { count } from './count';
+import { mimeType } from './mime-type';
 
 const registry = new Map<string, Validator>();
 
@@ -29,6 +31,8 @@ export function registerDefaultValidators(){
   registerValidator(dateTime);
   registerValidator(dateRange);
   registerValidator(fileSize);
+  registerValidator(count);
+  registerValidator(mimeType);
 }
 
 
@@ -51,14 +55,15 @@ export function runValidators(
   for (const rule of rules) {
     const validator = registry.get(rule.type);
     if (!validator) {
-      console.warn(`[FormsModule] Unknown validator type: "${rule.type}"`);
+      console.warn(`[FormLayer] Unknown validator type: "${rule.type}"`);
       continue;
     }
 
     const options = { ...(rule.options ?? {}), ...(extraOptions ?? {}) };
     const result = validator.validate(value, options);
     if (result instanceof Promise) {
-      console.warn(`[FormsModule] Async validator "${rule.type}" used in sync context — use runValidatorsAsync instead`);
+      // Field validation is synchronous in 0.x: async validators cannot block a submit yet.
+      console.error(`[FormLayer] Async validator "${rule.type}" was skipped: field validation is synchronous in FormLayer 0.x, so this rule does not run. Validate it on the server instead.`);
       continue;
     }
     if (!result.valid) {
@@ -79,7 +84,7 @@ export async function runValidatorsAsync(
   for (const rule of rules) {
     const validator = registry.get(rule.type);
     if (!validator) {
-      console.warn(`[FormsModule] Unknown validator type: "${rule.type}"`);
+      console.warn(`[FormLayer] Unknown validator type: "${rule.type}"`);
       continue;
     }
 

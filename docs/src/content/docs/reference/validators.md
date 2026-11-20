@@ -55,8 +55,16 @@ The `type` must match the `type` field in `data-validate` JSON rules.
 | `DateTime` | `message` | Yes |
 | `DateRange` | `minimum`, `maximum`, `message` | Yes |
 | `FileSize` | `minimum`, `maximum` (e.g. `"5M"`), `message` | Yes |
+| `MimeType` | `allowedMimeTypes` (array or comma list; wildcards like `image/*`), `message` | Yes |
+| `Count` | `minimum`, `maximum`, `message`: number of selected values in a checkbox group or multi-select | Only if `minimum` is 0 |
 
 Most validators pass on empty values by design. Combine with `NotEmpty` for required fields.
+
+`MimeType` checks the type the browser reports for each selected file. It is a convenience for users: the server must still check the file content.
+
+### Async validators
+
+A validator may return a `Promise`, but field validation is synchronous in FormLayer 0.x: async validators are skipped (with a console error) and cannot block a submit. Run such checks on the server and return the errors from the submit response. First-class async validation is planned for v2.
 
 ## ValidatorRule (HTML format)
 

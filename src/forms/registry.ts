@@ -33,7 +33,14 @@ export class FormRegistry {
     }
 
     const controller = new FormController(formEl, submitFn, controllerOptions);
-    this.forms.set(formEl.id, controller);
+    const formId = formEl.id;
+    this.forms.set(formId, controller);
+    // Unregister however the controller ends: unregister(), or finish() after a successful submit.
+    controller.onDestroy(() => {
+      if (this.forms.get(formId) !== controller) return;
+      this.forms.delete(formId);
+      this.eventBus.emit('form:unregistered', { formId });
+    });
     this.loadFormPlugins(controller);
     this.eventBus.emit('form:registered', { formId: formEl.id });
     return controller;
@@ -41,14 +48,16 @@ export class FormRegistry {
 
   private loadFormPlugins(controller: FormController): void {
     for (const factory of this.formPluginFactories) {
-      factory()
-        .then(({ default: PluginClass }) => {
-          const plugin = new PluginClass();
-          return controller.attachFormPlugin(plugin);
-        })
-        .catch((err) => {
-          console.warn('[FormsModule] Failed to load form plugin:', err);
-        });
+      controller.track(
+        factory()
+          .then(({ default: PluginClass }) => {
+            const plugin = new PluginClass();
+            return controller.attachFormPlugin(plugin);
+          })
+          .catch((err) => {
+            console.warn('[FormLayer] Failed to load form plugin:', err);
+          }),
+      );
     }
   }
 
@@ -56,9 +65,8 @@ export class FormRegistry {
     const controller = this.forms.get(formId);
     if (!controller) return;
 
+    // The onDestroy callback registered in register() removes it and emits `form:unregistered`.
     controller.destroy();
-    this.forms.delete(formId);
-    this.eventBus.emit('form:unregistered', { formId });
   }
 
   get(formId: string): FormControllerApi | undefined {
@@ -79,7 +87,7 @@ export class FormRegistry {
 
   registerFormPlugin(factory: FormPluginFactory): void {
     if (this._initialized) {
-      console.warn('[FormsModule] registerFormPlugin called after init — new plugin will only apply to forms registered after this point');
+      console.warn('[FormLayer] registerFormPlugin called after init — new plugin will only apply to forms registered after this point');
     }
     this.formPluginFactories.push(factory);
   }

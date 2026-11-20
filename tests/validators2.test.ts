@@ -1,6 +1,6 @@
-import { describe, it, expect, expectTypeOf } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { getValidator, registerDefaultValidators, runValidators } from '../src/forms/validators/index';
-import type { ValidatorRule, Validator } from '../src/forms/types';
+import type { ValidatorRule } from '../src/forms/types';
 
 
 

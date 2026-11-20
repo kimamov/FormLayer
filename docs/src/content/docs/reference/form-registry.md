@@ -25,10 +25,10 @@ const form = createFormController(document.getElementById('contact')!, submitFn)
 Register globally via module-level APIs (not on the registry):
 
 ```typescript
-import { registerValidator, registerFieldType } from 'formlayer';
+import { lazy, registerValidator, registerFieldType } from 'formlayer';
 
 registerValidator({ type: 'MyValidator', validate(value, options) { ... } });
-registerFieldType('slider', () => import('./fields/slider'));
+registerFieldType('slider', lazy(() => import('./fields/slider')));
 ```
 
 ## Methods

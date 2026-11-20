@@ -95,7 +95,7 @@ export default class ImageInputWithPreviewField extends AbstractDomFormField {
     const input = this.wrapper.querySelector<HTMLInputElement>('input[type="file"]');
     if (!input) {
       throw new Error(
-        `[FormsModule] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
+        `[FormLayer] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
       );
     }
     this.fileInput = input;
@@ -243,10 +243,14 @@ initTypo3Forms({
 Lazy-load for code splitting:
 
 ```typescript
+import { lazy } from 'formlayer';
+
 fieldsMap: {
-  'image-input-with-preview': () => import('./fields/image-input-with-preview'),
+  'image-input-with-preview': lazy(() => import('./fields/image-input-with-preview')),
 }
 ```
+
+Wrap loaders in `lazy()` so FormLayer can tell them apart from field classes. Unwrapped `() => import(...)` loaders still work, but `lazy()` is the reliable form.
 
 ## Step 6 — Complete implementation
 
@@ -267,7 +271,7 @@ export default class ImageInputWithPreviewField extends AbstractDomFormField {
     const input = this.wrapper.querySelector<HTMLInputElement>('input[type="file"]');
     if (!input) {
       throw new Error(
-        `[FormsModule] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
+        `[FormLayer] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
       );
     }
     this.fileInput = input;

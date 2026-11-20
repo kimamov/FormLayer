@@ -76,6 +76,6 @@ function resolveWrapper(element: HTMLElement): HTMLElement {
   }
 
   throw new Error(
-    '[FormsModule] initField() expects a [data-form-field] wrapper or an input inside one.',
+    '[FormLayer] initField() expects a [data-form-field] wrapper or an input inside one.',
   );
 }

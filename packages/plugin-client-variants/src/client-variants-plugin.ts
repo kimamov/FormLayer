@@ -75,7 +75,7 @@ export default class ClientVariantsPlugin implements FormPlugin {
           configs.push({ fieldName, variants });
         }
       } catch {
-        console.warn(`[FormsModule] Invalid data-client-variants JSON on field "${fieldName}"`);
+        console.warn(`[FormLayer] Invalid data-client-variants JSON on field "${fieldName}"`);
       }
     }
 
@@ -120,7 +120,7 @@ export default class ClientVariantsPlugin implements FormPlugin {
           return true;
         }
       } catch (err) {
-        console.warn('[FormsModule] Error evaluating variant condition:', err);
+        console.warn('[FormLayer] Error evaluating variant condition:', err);
       }
     }
 
