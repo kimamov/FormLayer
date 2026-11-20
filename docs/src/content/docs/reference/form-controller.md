@@ -30,14 +30,15 @@ interface FormLoadingStateOptions {
 
 ### `fieldsMap`
 
-A `CustomFieldsMap` maps `data-field-type` attribute values to custom `FormField` implementations. Each entry can be a class (sync) or a lazy factory (async):
+A `CustomFieldsMap` maps `data-field-type` attribute values to custom `FormField` implementations. Each entry can be a class (sync) or a lazy factory wrapped in `lazy()` (async):
 
 ```typescript
+import { lazy } from 'formlayer';
 import type { CustomFieldsMap } from 'formlayer';
 
 const fieldsMap: CustomFieldsMap = {
   combobox: ComboboxField,
-  datepicker: () => import('./fields/datepicker'),
+  datepicker: lazy(() => import('./fields/datepicker')),
 };
 ```
 
@@ -50,6 +51,15 @@ See [Plugins](/guides/plugins/) for full usage examples and [Loading State](/gui
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | `string` | The form's `id` attribute |
+
+### `ready`
+
+`Promise<void>` that resolves once every lazy field and form plugin has loaded, including ones added while waiting. Submitting waits for it, so a form submitted before its lazy fields have loaded still validates them.
+
+```typescript
+await form.ready;
+form.getState(); // includes lazy fields
+```
 
 ## Methods
 
@@ -87,6 +97,8 @@ Triggers a programmatic form submission (equivalent to the user clicking submit)
 form.submit();
 ```
 
+A submit button with `formnovalidate` (for example a multistep "Back" button) skips client-side validation; the submit function still runs.
+
 ### `reset()`
 
 Resets all fields to their default DOM values and clears validation state.
@@ -97,7 +109,7 @@ form.reset();
 
 ### `destroy()`
 
-Destroys the controller, aborts listeners, disconnects the mutation observer, and destroys all plugins.
+Destroys the controller, aborts listeners, disconnects the mutation observer, and destroys all plugins. A controller created by the registry is also unregistered, including when `finish()` destroys it after a successful submit.
 
 ```typescript
 form.destroy();

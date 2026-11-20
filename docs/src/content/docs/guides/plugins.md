@@ -32,13 +32,15 @@ When a `[data-form-field]` wrapper has `data-field-type="combobox"`, FormLayer i
 
 ### Lazy-Loaded Custom Fields
 
-Use a factory function for code-split custom fields that load on first use:
+Use a factory wrapped in `lazy()` for code-split custom fields that load on first use:
 
 ```typescript
+import { lazy } from 'formlayer';
+
 initTypo3Forms({
   fieldsMap: {
-    combobox: () => import('formlayer-plugin-combobox'),
-    datepicker: () => import('formlayer-plugin-datepicker'),
+    combobox: lazy(() => import('formlayer-plugin-combobox')),
+    datepicker: lazy(() => import('formlayer-plugin-datepicker')),
   },
 });
 ```
