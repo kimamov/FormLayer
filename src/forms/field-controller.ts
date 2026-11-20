@@ -21,6 +21,7 @@ export class FieldController implements FormField {
   private readonly rules: ValidatorRule[];
   private readonly abortController = new AbortController();
   private readonly savedNativeAttrs = new Map<string, string>();
+  private addedAriaRequired = false;
   private readonly emitter = new FieldEmitter();
 
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -38,7 +39,7 @@ export class FieldController implements FormField {
 
     const input = wrapper.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(SELECTORS.input);
     if (!input) {
-      throw new Error(`[FormsModule] No input found in field "${this.name}"`);
+      throw new Error(`[FormLayer] No input found in field "${this.name}"`);
     }
     this.input = input;
 
@@ -239,16 +240,33 @@ export class FieldController implements FormField {
     this.emitter.destroy();
   }
 
+  /**
+   * Inside a form with `novalidate` (set by FormController) native constraints
+   * never block submission or show browser bubbles, so they are kept: `required`
+   * stays exposed to assistive technology. Standalone fields in a validating
+   * form have the constraints removed; `required` is then mirrored as
+   * `aria-required="true"`.
+   */
   private disableNativeValidation(): void {
+    if (this.input.form?.noValidate) return;
+
     for (const attr of NATIVE_CONSTRAINT_ATTRS) {
       if (this.input.hasAttribute(attr)) {
         this.savedNativeAttrs.set(attr, this.input.getAttribute(attr) ?? '');
         this.input.removeAttribute(attr);
       }
     }
+    if (this.savedNativeAttrs.has('required') && !this.input.hasAttribute('aria-required')) {
+      this.input.setAttribute('aria-required', 'true');
+      this.addedAriaRequired = true;
+    }
   }
 
   private restoreNativeValidation(): void {
+    if (this.addedAriaRequired) {
+      this.input.removeAttribute('aria-required');
+      this.addedAriaRequired = false;
+    }
     for (const [attr, value] of this.savedNativeAttrs) {
       if (value === '') {
         this.input.setAttribute(attr, '');
@@ -259,22 +277,35 @@ export class FieldController implements FormField {
     this.savedNativeAttrs.clear();
   }
 
+  /**
+   * Listeners sit on the wrapper so that every control of a radio or checkbox
+   * group is observed, not just the first one. They use the capture phase, so
+   * non-bubbling events (`blur`, and synthetic `new Event('change')` dispatched
+   * by integrator code) are still seen. Moving focus between controls of the
+   * same field doesn't count as leaving it.
+   */
   private bind(): void {
     const signal = this.abortController.signal;
+    const isOwnControl = (target: EventTarget | null): boolean =>
+      target instanceof Element && target.matches(SELECTORS.input) && this.wrapper.contains(target);
 
-    this.input.addEventListener(
+    this.wrapper.addEventListener(
       'blur',
-      () => {
+      (event) => {
+        if (!isOwnControl(event.target)) return;
+        const next = (event as FocusEvent).relatedTarget;
+        if (next instanceof Node && this.wrapper.contains(next) && isOwnControl(next)) return;
         this._state.isTouched = true;
         this.validate();
         this.notifyChange();
       },
-      { signal },
+      { signal, capture: true },
     );
 
-    this.input.addEventListener(
+    this.wrapper.addEventListener(
       'input',
-      () => {
+      (event) => {
+        if (!isOwnControl(event.target)) return;
         this._state.isDirty = true;
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
         this.debounceTimer = setTimeout(() => {
@@ -284,18 +315,19 @@ export class FieldController implements FormField {
           this.notifyChange();
         }, DEBOUNCE_MS);
       },
-      { signal },
+      { signal, capture: true },
     );
 
-    this.input.addEventListener(
+    this.wrapper.addEventListener(
       'change',
-      () => {
+      (event) => {
+        if (!isOwnControl(event.target)) return;
         this._state.isDirty = true;
         this._state.isTouched = true;
         this.validate();
         this.notifyChange();
       },
-      { signal },
+      { signal, capture: true },
     );
   }
 
@@ -351,7 +383,7 @@ export class FieldController implements FormField {
       if (!Array.isArray(parsed)) return [];
       return parsed as ValidatorRule[];
     } catch {
-      console.warn(`[FormsModule] Invalid data-validate JSON on field "${this.name}"`);
+      console.warn(`[FormLayer] Invalid data-validate JSON on field "${this.name}"`);
       return [];
     }
   }

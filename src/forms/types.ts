@@ -126,6 +126,8 @@ export interface FormLoadingStateOptions {
 
 export interface FormControllerApi {
   readonly id: string;
+  /** Resolves once all lazy fields and form plugins have loaded. */
+  readonly ready: Promise<void>;
   getField(name: string): FieldState | undefined;
   getState(): FormState;
   validate(): Promise<boolean>;

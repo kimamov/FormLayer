@@ -13,7 +13,7 @@ let initialized = false;
 
 export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
   if (initialized) {
-    console.warn('[Typo3Forms] initTypo3Forms() called more than once — ignoring duplicate call');
+    console.warn('[FormLayer] initTypo3Forms() called more than once — ignoring duplicate call');
     return { registry: formRegistry, destroy() {} };
   }
   initialized = true;

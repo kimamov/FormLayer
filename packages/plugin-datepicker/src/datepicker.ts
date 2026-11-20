@@ -30,7 +30,7 @@ export default class DatePickerField extends AbstractDomFormField {
   protected mount(): void {
     const input = this.wrapper.querySelector<HTMLInputElement>(SELECTORS.input);
     if (!input) {
-      throw new Error(`[FormsModule] DatePickerField "${this.name}" requires a text input`);
+      throw new Error(`[FormLayer] DatePickerField "${this.name}" requires a text input`);
     }
     this.textInput = input;
     this.setControlElement(input);
@@ -111,7 +111,7 @@ export default class DatePickerField extends AbstractDomFormField {
         },
       });
     } catch (err) {
-      console.warn(`[FormsModule] DatePickerField "${this.name}" failed to load air-datepicker:`, err);
+      console.warn(`[FormLayer] DatePickerField "${this.name}" failed to load air-datepicker:`, err);
     }
   }
 

@@ -11,8 +11,8 @@ export {
 } from './forms/validators';
 export { initField, initFieldAsync } from './forms/init-field';
 export type { InitFieldOptions } from './forms/init-field';
-export { createField, createFieldAsync, isLazyFactory } from './forms/create-field';
-export type { CustomFieldsMap, CreateFieldOptions, AddFieldFromElementOptions } from './forms/create-field';
+export { createField, createFieldAsync, isLazyFactory, lazy } from './forms/create-field';
+export type { CustomFieldsMap, CreateFieldOptions, AddFieldFromElementOptions, LazyFieldLoader } from './forms/create-field';
 export { AbstractDomFormField } from './forms/abstract-dom-field';
 export type { AbstractDomFieldOptions } from './forms/abstract-dom-field';
 export { FieldEmitter } from './forms/field-emitter';
