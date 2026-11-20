@@ -1,7 +1,11 @@
 ---
 title: AbstractDomFormField
-description: Base class for custom DOM-backed field types.
+description: Deprecated base class for custom DOM-backed field types.
 ---
+
+:::caution[Deprecated]
+Write new fields with [`defineField()`](/reference/define-field/). `AbstractDomFormField` is now a thin layer over the shared field core and will be removed in a later version. See [Migrating from AbstractDomFormField](/guides/custom-fields/#migrating-from-abstractdomformfield).
+:::
 
 `AbstractDomFormField` is the recommended base class for custom field types that replace or augment native controls. It implements the full [`DomFormField`](/reference/types/#domformfield) interface — the same contract as [`FieldController`](/reference/field-controller/), plus hooks for custom DOM and value synchronization.
 

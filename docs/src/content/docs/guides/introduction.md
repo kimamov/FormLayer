@@ -38,7 +38,7 @@ flowchart TB
 
     Map["registerFieldType() global<br/>+ per-form fieldsMap"] -.-> CF
     CF --> Default["FieldController<br/><i>no data-field-type match</i>"]
-    CF --> Custom["FormField subclass<br/><i>combobox, datepicker, your plugin</i><br/>often extends AbstractDomFormField"]
+    CF --> Custom["FormField subclass<br/><i>combobox, datepicker, your plugin</i><br/>built with defineField()"]
 
     FC --> Plugins["FormPlugin<br/><i>registry.registerFormPlugin()</i>"]
     FC --> Events["EventBus — field:* / form:* events"]
@@ -56,7 +56,7 @@ flowchart TB
 
 **Standalone path.** `initField()` enhances one field outside any form. It does not use the registry, does not auto-resolve `data-field-type`, and does not load form plugins — pass `{ field: MyFieldClass }` or use `initFieldAsync()` for code-split custom types. See [Standalone Fields](/guides/standalone-fields/).
 
-Custom field plugins typically extend [`AbstractDomFormField`](/reference/abstract-dom-field/) rather than implementing [`FormField`](/reference/types/#formfield-interface) from scratch. See [Creating Custom Fields](/guides/custom-fields/).
+Custom field plugins use [`defineField()`](/reference/define-field/) rather than implementing [`FormField`](/reference/types/#formfield-interface) from scratch: they only say how to read and write the value, and the shared field core does the rest. See [Creating Custom Fields](/guides/custom-fields/).
 
 ## Key Concepts
 
@@ -64,7 +64,7 @@ Custom field plugins typically extend [`AbstractDomFormField`](/reference/abstra
 
 A **form** is any `<form>` element with an `id` (required when using `FormRegistry`). A **field** is any element with the `data-form-field` attribute — usually inside a form, but also usable standalone via `initField()`.
 
-Standard fields contain an `input`, `select`, or `textarea`. Custom field types (`data-field-type`) replace the default [`FieldController`](/reference/field-controller/) with a [`FormField`](/reference/types/#formfield-interface) implementation — typically [`AbstractDomFormField`](/reference/abstract-dom-field/) for DOM-backed plugins.
+Standard fields contain an `input`, `select`, or `textarea`. Custom field types (`data-field-type`) replace the default [`NativeField`](/reference/field-controller/) with a field built with [`defineField()`](/reference/define-field/).
 
 ```html
 <form id="my-form">

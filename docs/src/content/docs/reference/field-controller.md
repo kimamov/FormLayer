@@ -1,16 +1,28 @@
 ---
-title: FieldController
-description: API reference for individual field controllers.
+title: NativeField (FieldController)
+description: API reference for the built-in field for native controls.
 ---
 
-A `FieldController` wraps a single form field (a `[data-form-field]` wrapper containing an `input`, `select`, or `textarea`). It implements the [`DomFormField`](/reference/types/#domformfield) interface. Get one via `initField()` or interact with fields through the parent form controller.
+`NativeField` is the built-in field for a `[data-form-field]` wrapper with native controls: text-like inputs, textareas, selects (single and multiple), single checkboxes, checkbox groups, radio groups and file inputs. It implements the [`DomFormField`](/reference/types/#domformfield) interface. Get one via `initField()` or interact with fields through the parent form controller.
 
-For custom field types that replace or augment native controls, extend [`AbstractDomFormField`](/reference/abstract-dom-field/) instead of reimplementing validation and lifecycle. See [Creating Custom Fields](/guides/custom-fields/) for a full walkthrough.
+`FieldController` is the old name and stays as a deprecated alias.
+
+For custom field types, use [`defineField()`](/reference/define-field/). Custom fields share the same core, so state, validation, errors and events behave identically. See [Creating Custom Fields](/guides/custom-fields/).
+
+## Values
+
+| Controls | `value` |
+|----------|---------|
+| Text-like input, textarea, select, radio group, single checkbox | `string` |
+| Checkbox group (more than one checkbox, or a name ending in `[]`), multi-select | `string[]` |
+| File input | `File[]` |
+
+Listeners are attached to the wrapper, so every option of a group is observed.
 
 ## Constructor
 
 ```typescript
-new FieldController(wrapper: HTMLElement, options?: FieldControllerOptions)
+new NativeField(wrapper: HTMLElement, options?: FieldOptions)
 ```
 
 Usually created via `initField()` rather than directly.
@@ -21,7 +33,7 @@ Usually created via `initField()` rather than directly.
 |----------|------|-------------|
 | `name` | `string` | The `data-form-field` attribute value |
 | `element` | `HTMLElement` | The wrapper element |
-| `inputElement` | `HTMLInputElement \| HTMLSelectElement \| HTMLTextAreaElement` | The active input |
+| `inputElement` | `HTMLElement` | The main control (the first option for groups) |
 | `fieldType` | `string \| null` | The `data-field-type` attribute, or null |
 | `enabled` | `boolean` | Whether the field is enabled |
 
@@ -98,7 +110,7 @@ interface FieldErrorRenderContext {
 
 interface FieldControllerOptions {
   validate?(
-    value: string,
+    value: FieldValue,
     rules: ValidatorRule[],
     defaultValidate: () => FieldValidationResult
   ): FieldValidationResult;

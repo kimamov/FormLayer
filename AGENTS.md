@@ -49,3 +49,6 @@ Build core before plugins when types are needed. Workspace links `formlayer` int
 - `src/forms/` — TYPO3-agnostic, no third-party imports
 - `src/typo3/` — TYPO3 integration, no third-party imports
 - Third-party field plugins → `packages/plugin-*`
+- New field types use `defineField()` (`src/forms/define-field.ts`); `AbstractDomFormField` is a deprecated shim
+- Field values are `FieldValue = string | string[] | File[]` (`src/forms/field-value.ts`)
+- `npm run playground:check` records library capabilities in `playground/CAPABILITIES.md`

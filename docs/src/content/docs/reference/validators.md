@@ -26,7 +26,7 @@ registerValidator({
 interface Validator {
   type: string;
   validate(
-    value: string,
+    value: FieldValue,
     options: Record<string, unknown>
   ): ValidatorResult | Promise<ValidatorResult>;
 }

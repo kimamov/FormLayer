@@ -72,7 +72,7 @@ interface FieldErrorRenderContext {
 
 interface FieldControllerOptions {
   validate?(
-    value: string,
+    value: FieldValue,
     rules: ValidatorRule[],
     defaultValidate: () => FieldValidationResult
   ): FieldValidationResult;
@@ -100,7 +100,7 @@ interface FormControllerOptions {
 
 ## FormField Interface
 
-The contract implemented by `FieldController`, [`AbstractDomFormField`](/reference/abstract-dom-field/), and custom field types. Any class conforming to this interface can participate in a `FormController`.
+The contract implemented by `NativeField`, fields created with [`defineField()`](/reference/define-field/), and any custom field type. Any class conforming to this interface can participate in a `FormController`.
 
 ```typescript
 interface FormField {
@@ -118,23 +118,23 @@ interface FormField {
 
 ## DomFormField
 
-Extended interface for DOM-backed fields with a wrapper, native control, and field-level events. Implemented by `FieldController` and `AbstractDomFormField`.
+Extended interface for DOM-backed fields with a wrapper, native control, and field-level events. Implemented by every field: `NativeField` and fields created with `defineField()`.
 
 ```typescript
 interface DomFormField extends FormField {
   readonly element: HTMLElement;
-  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  readonly inputElement: HTMLElement;
   readonly fieldType: string | null;
   readonly enabled: boolean;
-  setValue(value: string): void;
-  replaceInput?(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
+  setValue(value: FieldValue): void;
+  replaceInput?(newInput: HTMLElement): void;
   on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
   once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
 }
 ```
 
-Custom field plugins should extend [`AbstractDomFormField`](/reference/abstract-dom-field/) rather than implementing `DomFormField` from scratch.
+Custom field plugins should use [`defineField()`](/reference/define-field/) rather than implementing `DomFormField` from scratch.
 
 ## Custom Field Types
 
@@ -163,7 +163,7 @@ type FieldControllerEventHandler = (state: FieldState) => void;
 ```typescript
 interface FieldState {
   name: string;
-  value: string;
+  value: FieldValue; // string | string[] | File[]
   isValid: boolean;
   isDirty: boolean;
   isTouched: boolean;

@@ -182,7 +182,7 @@ interface FormState {
 ```typescript
 interface FieldState {
   name: string;
-  value: string;
+  value: FieldValue; // string | string[] | File[]
   isValid: boolean;
   isDirty: boolean;
   isTouched: boolean;

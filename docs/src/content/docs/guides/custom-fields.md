@@ -1,451 +1,238 @@
 ---
 title: Creating Custom Fields
-description: Build a custom field type with AbstractDomFormField, step by step.
+description: Build a custom field type with defineField(), step by step.
 ---
 
-This guide walks through building an **image input with preview** field. By the end you will understand how FormLayer fields work internally: wrapper markup, value flow, validation, lifecycle, and registration.
+This guide builds an **image input with preview**. By the end you will know everything a custom field needs: markup, `defineField()`, the field context, values, registration and cleanup.
 
-For the full API surface, see [`AbstractDomFormField`](/reference/abstract-dom-field/).
+For the full API, see the [`defineField` reference](/reference/define-field/).
 
-## How fields fit together
+## How fields work
 
-Every field sits inside a `[data-form-field]` wrapper. `FormController` (or `initField()` for standalone use) picks a class from `fieldsMap` based on `data-field-type`, or falls back to [`FieldController`](/reference/field-controller/) for standard inputs.
+Every field sits inside a `[data-form-field]` wrapper. FormLayer picks a field type from `data-field-type` (registered with `registerFieldType()` or a form's `fieldsMap`), or uses the built-in `NativeField` for plain inputs, selects, textareas, checkbox and radio groups and file inputs.
 
-```mermaid
-flowchart TB
-  HTML["Wrapper HTML<br/>data-form-field attr"] --> Create["createField()"]
-  Create --> FC["FieldController<br/>(default)"]
-  Create --> Custom["AbstractDomFormField<br/>subclass"]
-  FC --> State["FieldState"]
-  Custom --> State
-  State --> Form["FormController<br/>connect()"]
-  Form --> Events["field:change<br/>form:valid / invalid"]
-```
+A field type only answers two questions:
 
-A field exposes a **canonical string value** through `readValue()`. Validation, server errors, and form state all use that string. Custom UI is your responsibility; the base class handles the rest.
+1. **How do I read and write the value?**
+2. **When does the user change or leave the field?**
 
-## Field lifecycle
+Everything else is shared and you don't write it: field state, `data-validate` rules, error rendering and `aria-invalid`, server errors, enabling and disabling (conditional fields), reset, and the events the form listens to.
 
 ```mermaid
-sequenceDiagram
-  participant Factory as createField / initField
-  participant F as AbstractDomFormField
-  participant DOM as DOM
-
-  Factory->>F: new MyField(wrapper, options)
-  Note over F: constructor — parseRules() only
-  Factory->>F: init()
-  F->>F: mount()
-  F->>DOM: build UI, setControlElement()
-  F->>F: initial FieldState
-
-  Note over F: User interacts
-  F->>F: markDirty / markTouched
-  F->>F: validate()
-  F->>F: notifyChange()
-  F->>F: connect(onChange)
-
-  Factory->>F: reset()
-  F->>F: onReset()
-
-  Factory->>F: destroy()
-  F->>F: abort signal, onDestroy()
+flowchart LR
+  HTML["Server-rendered wrapper<br/>data-form-field"] --> Setup["setup(ctx)"]
+  Setup --> Adapter["{ read, write, … }"]
+  Setup -- "ctx.input() / commit() / touch()" --> Core["Shared field core<br/>state · validation · errors · events"]
+  Adapter --> Core
+  Core --> Form["FormController"]
 ```
-
-The two-phase creation (construct, then `init()`) is what lets you assign DOM references in `mount()` using ordinary class fields. The factory functions always run both phases — you only ever call `createField`, `initField`, or `initFieldAsync`.
 
 ## Step 1 — Markup
 
-Start with progressive-enhancement HTML. The file input must remain in the DOM so the form submits normally without JavaScript.
+Render the full markup on the server. The file input stays in the DOM so the form works without JavaScript. Parts that only make sense with JavaScript start out `hidden`.
 
 ```html
 <div data-form-field="avatar"
-     data-field-type="image-input-with-preview"
-     data-validate='[{"type":"NotEmpty","options":{"message":"Please choose an image"}}]'>
+     data-field-type="image-preview"
+     data-validate='[{"type":"NotEmpty","options":{"message":"Choose a profile photo."}},
+                     {"type":"FileSize","options":{"maximum":"2M","message":"Choose an image under 2 MB."}}]'>
   <label for="avatar">Profile photo</label>
-  <input id="avatar" type="file" name="avatar" accept="image/*" />
-  <div id="avatar-errors" class="invalid-feedback"></div>
+  <input id="avatar" type="file" name="avatar" accept="image/*">
+  <img data-fl-part="preview" alt="" hidden>
+  <button type="button" data-fl-part="clear" hidden>Remove photo</button>
+  <p id="avatar-errors" class="invalid-feedback"></p>
 </div>
 ```
 
 | Attribute | Role |
 |-----------|------|
-| `data-form-field` | Field name; must match the control `name` |
-| `data-field-type` | Key in `fieldsMap` |
-| `data-validate` | JSON array of validator rules |
+| `data-form-field` | Field name. Server errors are matched by this name. |
+| `data-field-type` | The registered field type to use |
+| `data-validate` | JSON list of validator rules |
+| `data-fl-part` | Marks elements your field looks up with `ctx.part()` |
 
-The errors container follows the usual convention: `#${input.id}-errors` or `.invalid-feedback` inside the wrapper.
+The error container is found by convention: `#<input id>-errors`, or `.invalid-feedback` inside the wrapper. Don't reference it from `aria-describedby` in the markup; FormLayer adds the reference only while the field is invalid.
 
-## Step 2 — Scaffold the class
-
-Create `fields/image-input-with-preview.ts`:
-
-```typescript
-import { AbstractDomFormField } from 'formlayer';
-import type { AbstractDomFieldOptions } from 'formlayer';
-
-export default class ImageInputWithPreviewField extends AbstractDomFormField {
-  private fileInput!: HTMLInputElement;
-  private previewRoot!: HTMLElement;
-  private previewImg!: HTMLImageElement;
-  private clearButton!: HTMLButtonElement;
-  private objectUrl: string | null = null;
-
-  protected mount(): void {
-    const input = this.wrapper.querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) {
-      throw new Error(
-        `[FormLayer] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
-      );
-    }
-    this.fileInput = input;
-
-    this.buildPreviewUI();
-    this.bindEvents();
-    this.setControlElement(this.fileInput);
-  }
-
-  protected readValue(): string {
-    return this.fileInput.files?.length ? 'selected' : '';
-  }
-
-  protected writeValue(_value: string): void {
-    // Browsers do not allow setting file input values programmatically.
-  }
-
-  protected onReset(): void {
-    this.revokePreviewUrl();
-    this.fileInput.value = '';
-    this.previewImg.removeAttribute('src');
-    this.previewRoot.hidden = true;
-  }
-
-  protected onDestroy(): void {
-    this.revokePreviewUrl();
-    this.previewRoot.remove();
-    this.fileInput.hidden = false;
-  }
-
-  // buildPreviewUI(), bindEvents(), showPreview() — next steps
-}
-```
-
-### Why `'selected'` as the value?
-
-File inputs expose no stable string for validation. We use a sentinel: empty string when no file is chosen, `'selected'` when one is. [`NotEmpty`](/reference/validators/) treats any non-empty string as valid. The actual file bytes still submit via the native `input` in `FormData`.
-
-For filename-based rules, return `this.fileInput.files?.[0]?.name ?? ''` from `readValue()` instead.
-
-## Step 3 — Build the preview UI
-
-Hide the native input visually (keep it in the DOM for submission) and insert a preview region after it:
+## Step 2 — Define the field
 
 ```typescript
-private buildPreviewUI(): void {
-  this.fileInput.classList.add('visually-hidden');
+// fields/image-preview.ts
+import { defineField } from 'formlayer';
 
-  this.previewRoot = document.createElement('div');
-  this.previewRoot.className = 'image-preview-field';
-  this.previewRoot.hidden = true;
+export default defineField({
+  setup(ctx) {
+    const input = ctx.control<HTMLInputElement>();
+    const preview = ctx.part<HTMLImageElement>('preview');
+    const clear = ctx.part<HTMLButtonElement>('clear');
+    let url: string | null = null;
 
-  this.previewImg = document.createElement('img');
-  this.previewImg.className = 'image-preview-field__img';
-  this.previewImg.alt = '';
+    const show = () => {
+      if (url) URL.revokeObjectURL(url);
+      const file = input.files?.[0];
+      url = file ? URL.createObjectURL(file) : null;
+      preview.src = url ?? '';
+      preview.alt = file?.name ?? '';
+      preview.hidden = clear.hidden = !file;
+    };
 
-  this.clearButton = document.createElement('button');
-  this.clearButton.type = 'button';
-  this.clearButton.className = 'image-preview-field__clear';
-  this.clearButton.textContent = 'Remove';
+    input.addEventListener('change', () => { show(); ctx.commit(); }, { signal: ctx.signal });
+    clear.addEventListener('click', () => {
+      input.value = '';
+      show();
+      ctx.commit();
+      input.focus();
+    }, { signal: ctx.signal });
 
-  const pickButton = document.createElement('button');
-  pickButton.type = 'button';
-  pickButton.className = 'image-preview-field__pick';
-  pickButton.textContent = 'Choose image…';
-
-  pickButton.addEventListener('click', () => this.fileInput.click(), {
-    signal: this.signal,
-  });
-
-  this.previewRoot.append(this.previewImg, this.clearButton);
-  this.fileInput.insertAdjacentElement('afterend', this.previewRoot);
-  this.fileInput.insertAdjacentElement('afterend', pickButton);
-}
-```
-
-`setControlElement(this.fileInput)` tells FormLayer which element receives `disabled`, error classes (`is-invalid`), and focus when `focus()` is called. The pick button delegates to the file input via `.click()`.
-
-## Step 4 — Wire events
-
-`AbstractDomFormField` does **not** auto-bind input listeners (unlike `FieldController`). You decide when to validate and notify:
-
-```typescript
-private bindEvents(): void {
-  this.fileInput.addEventListener('change', () => {
-    this.markDirty();
-    this.markTouched();
-    if (this.fileInput.files?.[0]) {
-      this.showPreview(this.fileInput.files[0]);
-    } else {
-      this.onReset();
-    }
-    this.validate();
-    this.notifyChange();
-  }, { signal: this.signal });
-
-  this.clearButton.addEventListener('click', () => {
-    this.onReset();
-    this.markDirty();
-    this.markTouched();
-    this.validate();
-    this.notifyChange();
-  }, { signal: this.signal });
-}
-
-private showPreview(file: File): void {
-  this.revokePreviewUrl();
-  this.objectUrl = URL.createObjectURL(file);
-  this.previewImg.src = this.objectUrl;
-  this.previewImg.alt = file.name;
-  this.previewRoot.hidden = false;
-}
-
-private revokePreviewUrl(): void {
-  if (this.objectUrl) {
-    URL.revokeObjectURL(this.objectUrl);
-    this.objectUrl = null;
-  }
-}
-```
-
-| Call | When |
-|------|------|
-| `markDirty()` | User changed something |
-| `markTouched()` | User finished interaction (change/blur/commit) |
-| `validate()` | Run rules, update error DOM |
-| `notifyChange()` | Push new state to the form and emit field events |
-| `setValue()` | Programmatic update — combines write, validate, notify |
-
-Use `{ signal: this.signal }` on every listener so `destroy()` cleans up automatically.
-
-## Step 5 — Register the field
-
-```typescript
-import { initTypo3Forms } from 'formlayer/typo3';
-import ImageInputWithPreviewField from './fields/image-input-with-preview';
-
-initTypo3Forms({
-  fieldsMap: {
-    'image-input-with-preview': ImageInputWithPreviewField,
+    return {
+      read: () => Array.from(input.files ?? []),
+      write: (value) => { if (value.length === 0) { input.value = ''; show(); } },
+      reset: () => { input.value = ''; show(); },
+      destroy: () => { if (url) URL.revokeObjectURL(url); },
+    };
   },
 });
 ```
 
-Lazy-load for code splitting:
+That is the whole field. `setup()` runs once per wrapper. It finds its elements, attaches listeners, tells FormLayer when the user changed something, and returns an **adapter** that reads and writes the value.
+
+### The context (`ctx`)
+
+| Member | Use it to |
+|--------|-----------|
+| `ctx.wrapper`, `ctx.name` | The `[data-form-field]` element and its name |
+| `ctx.control()` | Get the first `input`/`select`/`textarea` in the wrapper |
+| `ctx.part(name)` / `ctx.parts(name)` | Get the element(s) marked `data-fl-part="name"`. `part()` throws a clear error if it is missing |
+| `ctx.setControl(el \| el[])` | Choose the element(s) that receive focus, `aria-invalid` and the error link. Default: the first control. Pass every option of a group |
+| `ctx.signal` | Pass `{ signal: ctx.signal }` to every `addEventListener`; listeners are removed when the field is destroyed |
+| `ctx.input()` | The user is typing. Marks the field dirty; validates after a short pause once the field was touched |
+| `ctx.commit()` | The user committed a value (picked, ticked, selected, chose a file). Marks it dirty and touched and validates now |
+| `ctx.touch()` | The user left the field. Marks it touched and validates |
+
+These three signals mirror the DOM's `input`, `change` and `blur` events, and they are all a field needs to report. You never manage dirty/touched state, call validators or emit events yourself.
+
+### The adapter
+
+| Member | Required | Purpose |
+|--------|----------|---------|
+| `read()` | yes | Read the current value from the DOM |
+| `write(value)` | yes | Write a value to the DOM (used by `setValue()`) |
+| `focus()` | no | Focus the right element (default: the first control) |
+| `reset()` | no | Restore the initial DOM state (default: `write()` the value read at setup) |
+| `disabled(isDisabled)` | no | React to the field being disabled or enabled. Its controls are already toggled |
+| `destroy()` | no | Remove DOM you created and free resources (object URLs, library instances) |
+
+### Values
+
+A value is a `FieldValue`: `string`, `string[]` or `File[]`. Return whatever fits the control, the way the native field does:
+
+| Control | Value |
+|---------|-------|
+| Text, textarea, select, radio group, single checkbox | `string` |
+| Checkbox group, multi-select | `string[]` |
+| File input | `File[]` |
+
+Validators receive the value as is. `NotEmpty` treats `''` and `[]` as empty, `Count` counts list items, `FileSize` and `MimeType` check `File[]`, and string validators see lists joined with commas. The submitted data always comes from the native controls in the form, not from `read()`.
+
+## Step 3 — Register the field
+
+Register globally before the forms initialise:
 
 ```typescript
+import { registerFieldType, lazy } from 'formlayer';
+import ImagePreviewField from './fields/image-preview';
+
+registerFieldType('image-preview', ImagePreviewField);
+
+// or load it only when a form uses it:
+registerFieldType('image-preview', lazy(() => import('./fields/image-preview')));
+```
+
+Or per form, through `fieldsMap`:
+
+```typescript
+import { initTypo3Forms } from 'formlayer/typo3';
 import { lazy } from 'formlayer';
 
-fieldsMap: {
-  'image-input-with-preview': lazy(() => import('./fields/image-input-with-preview')),
-}
+initTypo3Forms({
+  fieldsMap: {
+    'image-preview': lazy(() => import('./fields/image-preview')),
+  },
+});
 ```
 
-Wrap loaders in `lazy()` so FormLayer can tell them apart from field classes. Unwrapped `() => import(...)` loaders still work, but `lazy()` is the reliable form.
+The module must `export default` the field.
 
-## Step 6 — Complete implementation
+## Building markup in JavaScript
 
-<details>
-<summary>Full <code>image-input-with-preview.ts</code></summary>
+Prefer server-rendered markup. When a field has to create elements (for example from data it loads), use the `html` template: it escapes every interpolated string, so labels from content editors or APIs can't inject markup.
 
 ```typescript
-import { AbstractDomFormField } from 'formlayer';
+import { html } from 'formlayer';
 
-export default class ImageInputWithPreviewField extends AbstractDomFormField {
-  private fileInput!: HTMLInputElement;
-  private previewRoot!: HTMLElement;
-  private previewImg!: HTMLImageElement;
-  private clearButton!: HTMLButtonElement;
-  private objectUrl: string | null = null;
+const option = (country: { code: string; name: string; flag: string }) =>
+  html`<li role="option" data-value="${country.code}"><span aria-hidden="true">${country.flag}</span> ${country.name}</li>`;
 
-  protected mount(): void {
-    const input = this.wrapper.querySelector<HTMLInputElement>('input[type="file"]');
-    if (!input) {
-      throw new Error(
-        `[FormLayer] ImageInputWithPreviewField "${this.name}" requires input[type="file"]`,
-      );
-    }
-    this.fileInput = input;
-    this.buildPreviewUI();
-    this.bindEvents();
-    this.setControlElement(this.fileInput);
-  }
-
-  protected readValue(): string {
-    return this.fileInput.files?.length ? 'selected' : '';
-  }
-
-  protected writeValue(_value: string): void {}
-
-  protected onReset(): void {
-    this.revokePreviewUrl();
-    this.fileInput.value = '';
-    this.previewImg.removeAttribute('src');
-    this.previewRoot.hidden = true;
-  }
-
-  protected onDestroy(): void {
-    this.revokePreviewUrl();
-    this.previewRoot.remove();
-    this.fileInput.hidden = false;
-    this.fileInput.classList.remove('visually-hidden');
-  }
-
-  private buildPreviewUI(): void {
-    this.fileInput.classList.add('visually-hidden');
-
-    this.previewRoot = document.createElement('div');
-    this.previewRoot.className = 'image-preview-field';
-    this.previewRoot.hidden = true;
-
-    this.previewImg = document.createElement('img');
-    this.previewImg.className = 'image-preview-field__img';
-    this.previewImg.alt = '';
-
-    this.clearButton = document.createElement('button');
-    this.clearButton.type = 'button';
-    this.clearButton.className = 'image-preview-field__clear';
-    this.clearButton.textContent = 'Remove';
-
-    const pickButton = document.createElement('button');
-    pickButton.type = 'button';
-    pickButton.className = 'image-preview-field__pick';
-    pickButton.textContent = 'Choose image…';
-    pickButton.addEventListener('click', () => this.fileInput.click(), {
-      signal: this.signal,
-    });
-
-    this.previewRoot.append(this.previewImg, this.clearButton);
-    this.fileInput.insertAdjacentElement('afterend', pickButton);
-    this.fileInput.insertAdjacentElement('afterend', this.previewRoot);
-  }
-
-  private bindEvents(): void {
-    this.fileInput.addEventListener('change', () => {
-      this.markDirty();
-      this.markTouched();
-      if (this.fileInput.files?.[0]) {
-        this.showPreview(this.fileInput.files[0]);
-      } else {
-        this.onReset();
-      }
-      this.validate();
-      this.notifyChange();
-    }, { signal: this.signal });
-
-    this.clearButton.addEventListener('click', () => {
-      this.onReset();
-      this.markDirty();
-      this.markTouched();
-      this.validate();
-      this.notifyChange();
-    }, { signal: this.signal });
-  }
-
-  private showPreview(file: File): void {
-    this.revokePreviewUrl();
-    this.objectUrl = URL.createObjectURL(file);
-    this.previewImg.src = this.objectUrl;
-    this.previewImg.alt = file.name;
-    this.previewRoot.hidden = false;
-  }
-
-  private revokePreviewUrl(): void {
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = null;
-    }
-  }
-}
+listbox.replaceChildren(...countries.map(option));
 ```
 
-</details>
+Interpolated nodes (and arrays of them) are inserted as nodes. `raw(markup)` inserts trusted markup unescaped; never pass user input to it.
 
-## Patterns from built-in plugins
+## Server errors and conditional fields
 
-Study the official plugins for more advanced patterns:
+Both work without extra code:
 
-| Pattern | Example |
-|---------|---------|
-| Hidden native control + visible widget | [Combobox](/guides/plugins/#combobox) — `<select>` hidden, text input is `inputElement` |
-| Third-party library lifecycle | [Datepicker](/guides/plugins/#datepicker) — init in `mount()`, destroy in `onDestroy()` |
-| Commit on blur | Combobox `commitInputValue()` — validate when the user leaves the field |
-| `setValue()` for programmatic updates | Combobox `applySelection()` — syncs hidden select and visible label |
-
-```typescript
-// Combobox: canonical value lives on the hidden <select>
-protected readValue(): string {
-  return this.select.value;
-}
-
-protected writeValue(value: string): void {
-  this.select.value = value;
-  const opt = this.comboboxOptions.find((o) => o.value === value);
-  this.textInput.value = opt?.label ?? '';
-}
-```
-
-## Server errors and enable/disable
-
-Server errors work out of the box. After a failed AJAX submit, `FormController` calls `setServerErrors()` on each field. Errors persist until the value changes — try submitting without a file, then pick one; the error should clear.
-
-Client variants ([`formlayer-plugin-client-variants`](/guides/plugins/#client-variants)) call `setEnabled(false)` on fields that fail their condition. The base class hides the wrapper, disables `inputElement`, and skips validation.
+- After a failed submit, `FormController` calls `setServerErrors()` on each field. Errors stay until the value changes.
+- Conditional fields ([client variants](/guides/plugins/#client-variants)) call `setEnabled(false)`. The core hides the wrapper, disables every control inside it, and skips validation. Re-enabling restores only what it disabled. Implement `disabled()` in the adapter if your field needs to react, for example by closing a popup.
 
 ## Standalone use
 
-Custom fields work outside a form controller via `initField()`. Pass the class explicitly with the `field` option (standalone fields do not use `data-field-type` or `fieldsMap`):
+Fields also work without a form controller:
 
 ```typescript
-import { initField } from 'formlayer';
-import ImageInputWithPreviewField from './fields/image-input-with-preview';
+import { initField, initFieldAsync, lazy } from 'formlayer';
+import ImagePreviewField from './fields/image-preview';
 
 const field = initField(document.querySelector('[data-form-field="avatar"]')!, {
-  field: ImageInputWithPreviewField,
+  field: ImagePreviewField,
 });
+field.on('change', (state) => console.log(state.value, state.isValid));
 
-field.on('change', (state) => {
-  console.log(state.value, state.isValid);
-});
-```
-
-Lazy-load the class with `initFieldAsync()`:
-
-```typescript
-import { initFieldAsync } from 'formlayer';
-
-const field = await initFieldAsync(
+// code-split:
+const lazyField = await initFieldAsync(
   document.querySelector('[data-form-field="avatar"]')!,
-  () => import('./fields/image-input-with-preview'),
+  lazy(() => import('./fields/image-preview')),
 );
 ```
 
-`initField` / `initFieldAsync` construct the field **and** run its `mount()` setup for you. Do not call `new ImageInputWithPreviewField(wrapper)` directly — a bare instance is not mounted (see [Field lifecycle](#field-lifecycle)).
+## Migrating from `AbstractDomFormField`
+
+`AbstractDomFormField` still works but is deprecated and will be removed in a later version. The mapping is direct:
+
+| `AbstractDomFormField` | `defineField` |
+|------------------------|---------------|
+| `class X extends AbstractDomFormField` with `!` fields | `defineField({ setup(ctx) { … } })` with local variables |
+| `mount()` | the body of `setup()` |
+| `this.wrapper.querySelector(…)` | `ctx.part('name')`, `ctx.control()` |
+| `setControlElement(el)` | `ctx.setControl(el)` |
+| `readValue()` / `writeValue(value)` | `read()` / `write(value)` in the returned adapter |
+| `focusControl()`, `onReset()`, `onDestroy()` | `focus()`, `reset()`, `destroy()` |
+| `this.signal` | `ctx.signal` |
+| `markDirty()` + `validate()` + `notifyChange()` while typing | `ctx.input()` |
+| `markDirty()` + `markTouched()` + `setValue(v)` on selection | write the DOM, then `ctx.commit()` |
+| `markTouched()` + `validate()` + `notifyChange()` on blur | `ctx.touch()` |
 
 ## Checklist
 
-After implementing a custom field, verify:
-
-- [ ] `mount()` calls `setControlElement()` with the correct focus target
-- [ ] `readValue()` matches what validators and the backend expect
-- [ ] Listeners use `{ signal: this.signal }`
-- [ ] User interactions call `validate()` + `notifyChange()` (or `setValue()`)
-- [ ] `onReset()` restores DOM defaults
-- [ ] `onDestroy()` removes custom nodes and revokes resources (object URLs, library instances)
-- [ ] Form submits the native control value when JavaScript is disabled
-- [ ] Error container is found (`#id-errors` or `.invalid-feedback`)
+- [ ] The form works without JavaScript (native controls submit the value; JS-only parts start `hidden`)
+- [ ] `read()` returns what validators and the backend expect
+- [ ] Every listener uses `{ signal: ctx.signal }`
+- [ ] User changes call `ctx.input()`, `ctx.commit()` or `ctx.touch()`
+- [ ] `ctx.setControl()` points at the element(s) that should get focus and `aria-invalid`
+- [ ] `destroy()` removes created nodes and frees resources
+- [ ] The error container is found (`#id-errors` or `.invalid-feedback`)
 
 ## Next steps
 
-- [Plugins](/guides/plugins/) — register fields globally, lazy loading, built-in plugins
-- [`AbstractDomFormField` reference](/reference/abstract-dom-field/) — complete API
-- [Error Rendering](/guides/error-rendering/) — customize validation messages
-- [Validators](/reference/validators/) — available rule types
+- [`defineField` reference](/reference/define-field/): the complete API
+- [Plugins](/guides/plugins/): register fields globally, lazy loading, built-in plugins
+- [Error Rendering](/guides/error-rendering/): customise validation messages
