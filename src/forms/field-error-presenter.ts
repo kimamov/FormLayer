@@ -19,31 +19,46 @@ export interface FieldErrorPresenterOptions<THost = unknown> {
   renderErrors?: (errors: string[], field: THost) => void;
 }
 
+/**
+ * Renders a field's errors and keeps the ARIA state of its controls in sync.
+ *
+ * The targets are the field's controls: one for most fields, every option for
+ * radio and checkbox groups (so the error is announced whichever option has
+ * focus). Targets start with `aria-invalid="false"`, which stops Firefox and
+ * Safari from announcing empty required fields as invalid before interaction.
+ */
 export class FieldErrorPresenter<THost = unknown> {
   readonly errorsElement: HTMLElement | null;
+  private readonly getTargets: () => HTMLElement[];
 
   constructor(
     private readonly wrapper: HTMLElement,
-    private readonly getInput: () => HTMLElement,
+    targets: () => HTMLElement | HTMLElement[],
     private readonly host: THost,
     private readonly options: FieldErrorPresenterOptions<THost> = {},
   ) {
+    this.getTargets = () => {
+      const t = targets();
+      return Array.isArray(t) ? t : [t];
+    };
     this.errorsElement = this.findErrorsElement();
+    for (const target of this.getTargets()) {
+      if (!target.hasAttribute('aria-invalid')) target.setAttribute('aria-invalid', 'false');
+    }
   }
 
   update(isValid: boolean, errors: string[]): void {
-    const input = this.getInput();
+    const targets = this.getTargets();
+    this.wrapper.classList.toggle(CSS_CLASSES.errorClass, !isValid);
 
-    if (isValid) {
-      input.classList.remove(CSS_CLASSES.errorClass);
-      this.wrapper.classList.remove(CSS_CLASSES.errorClass);
-      input.removeAttribute('aria-invalid');
-      this.removeErrorsFromDescribedBy(input);
-    } else {
-      input.classList.add(CSS_CLASSES.errorClass);
-      this.wrapper.classList.add(CSS_CLASSES.errorClass);
-      input.setAttribute('aria-invalid', 'true');
-      this.addErrorsToDescribedBy(input);
+    for (const input of targets) {
+      input.classList.toggle(CSS_CLASSES.errorClass, !isValid);
+      input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
+      if (isValid) {
+        this.removeErrorsFromDescribedBy(input);
+      } else {
+        this.addErrorsToDescribedBy(input);
+      }
     }
 
     if (this.options.renderErrors) {
@@ -66,10 +81,15 @@ export class FieldErrorPresenter<THost = unknown> {
       return this.options.findErrorsElement(this.host);
     }
 
-    const input = this.getInput();
-    const uniqueId = input.id;
+    const input = this.getTargets()[0];
+    const uniqueId = input?.id;
     if (uniqueId) {
       const el = document.getElementById(`${uniqueId}-errors`);
+      if (el) return el;
+    }
+
+    if (this.wrapper.id) {
+      const el = document.getElementById(`${this.wrapper.id}-errors`);
       if (el) return el;
     }
 

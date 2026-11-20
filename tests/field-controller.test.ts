@@ -323,7 +323,7 @@ describe('FieldController', () => {
       ctrl.setEnabled(false);
       expect(wrapper.hidden).toBe(true);
       expect(wrapper.getAttribute('aria-hidden')).toBe('true');
-      expect(ctrl.inputElement.disabled).toBe(true);
+      expect((ctrl.inputElement as HTMLInputElement).disabled).toBe(true);
     });
 
     it('shows the wrapper when re-enabled', () => {
@@ -335,7 +335,7 @@ describe('FieldController', () => {
 
       expect(wrapper.hidden).toBe(false);
       expect(wrapper.hasAttribute('aria-hidden')).toBe(false);
-      expect(ctrl.inputElement.disabled).toBe(false);
+      expect((ctrl.inputElement as HTMLInputElement).disabled).toBe(false);
     });
 
     it('clears errors when disabled', () => {

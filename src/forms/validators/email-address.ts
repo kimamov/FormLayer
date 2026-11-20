@@ -1,10 +1,12 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { valueToString } from '../field-value';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const emailAddress: Validator = {
   type: 'EmailAddress',
-  validate(value: string, options: Record<string, unknown>): ValidatorResult {
+  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const value = valueToString(input);
     if (value.length === 0) {
       return { valid: true, message: '' };
     }

@@ -1,5 +1,5 @@
-import { FieldController } from './field-controller';
-import { AbstractDomFormField } from './abstract-dom-field';
+import { NativeField } from './native-field';
+import { BaseField } from './base-field';
 import type { FormField, FormFieldClass, FormFieldFactory } from './types';
 import type { FieldOptions } from './field-options';
 
@@ -68,7 +68,7 @@ export interface CreateFieldOptions {
  * Priority order:
  *  1. `options.factory` (explicit override)
  *  2. `options.customFields[data-field-type]` (lookup by attribute)
- *  3. `undefined` (fall back to FieldController)
+ *  3. `undefined` (fall back to NativeField)
  */
 function resolveFactory(wrapper: HTMLElement, options?: CreateFieldOptions): FormFieldFactory | undefined {
   if (options?.factory) return options.factory;
@@ -84,12 +84,12 @@ function fieldOpts(options?: CreateFieldOptions): FieldOptions {
 }
 
 /**
- * Run the deferred {@link AbstractDomFormField.init} step after construction.
+ * Run the deferred {@link BaseField.init} step after construction.
  * Internal to the field-creation paths — keeps `mount()` out of the
  * constructor so subclass class fields exist before it runs.
  */
 export function finalizeField(field: FormField): FormField {
-  if (field instanceof AbstractDomFormField) {
+  if (field instanceof BaseField) {
     field.init();
   }
   return field;
@@ -100,14 +100,14 @@ export function finalizeField(field: FormField): FormField {
  *
  * If a matching factory is found and it's a class, instantiates it directly.
  * If the factory is lazy, throws — use `createFieldAsync` instead.
- * If no factory matches, creates a default `FieldController`.
+ * If no factory matches, creates a default `NativeField`.
  */
 export function createField(wrapper: HTMLElement, options?: CreateFieldOptions): FormField {
   const factory = resolveFactory(wrapper, options);
   const opts = fieldOpts(options);
 
   if (!factory) {
-    return new FieldController(wrapper, opts);
+    return new NativeField(wrapper, opts);
   }
 
   if (isLazyFactory(factory)) {
@@ -128,7 +128,7 @@ export async function createFieldAsync(wrapper: HTMLElement, options?: CreateFie
   const opts = fieldOpts(options);
 
   if (!factory) {
-    return new FieldController(wrapper, opts);
+    return new NativeField(wrapper, opts);
   }
 
   if (isLazyFactory(factory)) {

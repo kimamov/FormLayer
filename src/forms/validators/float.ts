@@ -1,8 +1,10 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { valueToString } from '../field-value';
 
 export const float: Validator = {
   type: 'Float',
-  validate(value: string, options: Record<string, unknown>): ValidatorResult {
+  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const value = valueToString(input);
     if (value.length === 0) {
       return { valid: true, message: '' };
     }

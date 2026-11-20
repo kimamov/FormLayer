@@ -1,3 +1,7 @@
+import type { FieldValue } from './field-value';
+
+export type { FieldValue } from './field-value';
+
 export interface ValidatorRule {
   type: string;
   options?: Record<string, unknown>;
@@ -10,12 +14,17 @@ export interface ValidatorResult {
 
 export interface Validator {
   type: string;
-  validate(value: string, options: Record<string, unknown>): ValidatorResult | Promise<ValidatorResult>;
+  /**
+   * `value` is the field's typed value: `string`, `string[]` (checkbox groups,
+   * multi-selects) or `File[]` (file inputs). Validators written for strings
+   * can convert with `valueToString()`.
+   */
+  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult | Promise<ValidatorResult>;
 }
 
 export interface FieldState {
   name: string;
-  value: string;
+  value: FieldValue;
   isValid: boolean;
   isDirty: boolean;
   isTouched: boolean;
@@ -47,12 +56,13 @@ export interface FormField {
  */
 export interface DomFormField extends FormField {
   readonly element: HTMLElement;
-  readonly inputElement: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  /** The main control: receives focus, `aria-invalid` and the error link. */
+  readonly inputElement: HTMLElement;
   readonly fieldType: string | null;
   readonly enabled: boolean;
-  setValue(value: string): void;
+  setValue(value: FieldValue): void;
   /** Swap the active control; optional — only needed when the focus target changes. */
-  replaceInput?(newInput: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): void;
+  replaceInput?(newInput: HTMLElement): void;
   on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
   once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;

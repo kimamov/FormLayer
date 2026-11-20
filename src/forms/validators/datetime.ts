@@ -1,8 +1,10 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { valueToString } from '../field-value';
 
 export const dateTime: Validator = {
   type: 'DateTime',
-  validate(value: string): ValidatorResult {
+  validate(input: FieldValue): ValidatorResult {
+    const value = valueToString(input);
     if (value.length === 0) {
       return { valid: true, message: '' };
     }

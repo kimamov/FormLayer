@@ -1,4 +1,5 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { isFileValue } from '../field-value';
 
 function matches(type: string, allowed: string): boolean {
   const pattern = allowed.trim().toLowerCase();
@@ -14,8 +15,8 @@ function matches(type: string, allowed: string): boolean {
  */
 export const mimeType: Validator = {
   type: 'MimeType',
-  validate(_value: string, options: Record<string, unknown>): ValidatorResult {
-    const files = options['__files'] as FileList | undefined;
+  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const files = isFileValue(value) ? value : (options['__files'] as ArrayLike<File> | undefined);
     if (!files || files.length === 0) {
       return { valid: true, message: '' };
     }

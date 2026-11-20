@@ -1,4 +1,4 @@
-import type { FieldValidationResult, FormField, ValidatorRule } from './types';
+import type { FieldValidationResult, FieldValue, FormField, ValidatorRule } from './types';
 import type { FieldErrorRenderContext } from './field-error-presenter';
 
 export type { FieldErrorRenderContext };
@@ -6,7 +6,7 @@ export type { FieldErrorRenderContext };
 /** Shared hooks for field validation and error rendering (form and standalone paths). */
 export interface FieldOptions {
   validate?: (
-    value: string,
+    value: FieldValue,
     rules: ValidatorRule[],
     defaultValidate: () => FieldValidationResult,
   ) => FieldValidationResult;

@@ -1,4 +1,4 @@
-import type { Validator, ValidatorRule, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorRule, ValidatorResult } from '../types';
 import { notEmpty } from './not-empty';
 import { stringLength } from './string-length';
 import { emailAddress } from './email-address';
@@ -47,7 +47,7 @@ export function registerValidator(validator: Validator): void {
 
 export function runValidators(
   rules: ValidatorRule[],
-  value: string,
+  value: FieldValue,
   extraOptions?: Record<string, unknown>,
 ): ValidatorResult[] {
   const results: ValidatorResult[] = [];
@@ -76,7 +76,7 @@ export function runValidators(
 
 export async function runValidatorsAsync(
   rules: ValidatorRule[],
-  value: string,
+  value: FieldValue,
   extraOptions?: Record<string, unknown>,
 ): Promise<ValidatorResult[]> {
   const results: ValidatorResult[] = [];
