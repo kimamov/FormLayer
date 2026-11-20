@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { FormController } from '../src/forms/form-controller';
-import type { FormSubmitFunction, FormPlugin, FormPluginHost, FormField, FieldState, FieldValidationResult, FieldEventDetail, FormEventDetail } from '../src/forms/types';
+import type { FormSubmitFunction, FormPlugin, FormPluginHost, FormField, FieldState, FieldValidationResult, FieldEventDetail } from '../src/forms/types';
 import { registerDefaultValidators } from '../src/forms/validators';
 
 const noopSubmit: FormSubmitFunction = async () => {};
@@ -583,7 +583,7 @@ describe('FormController', () => {
     it('calls submit function with form data when valid', async () => {
       const form = createRegistrationForm();
       const submitFn = vi.fn<FormSubmitFunction>(async () => {});
-      const ctrl = new FormController(form, submitFn);
+      new FormController(form, submitFn);
 
       (document.getElementById('firstName') as HTMLInputElement).value = 'John';
       (document.getElementById('lastName') as HTMLInputElement).value = 'Doe';
@@ -605,7 +605,7 @@ describe('FormController', () => {
     it('does not call submit function when invalid', async () => {
       const form = createRegistrationForm();
       const submitFn = vi.fn<FormSubmitFunction>(async () => {});
-      const ctrl = new FormController(form, submitFn);
+      new FormController(form, submitFn);
 
       form.dispatchEvent(new SubmitEvent('submit', { cancelable: true }));
       await new Promise((r) => setTimeout(r, 10));
