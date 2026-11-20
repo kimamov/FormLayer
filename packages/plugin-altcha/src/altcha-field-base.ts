@@ -1,4 +1,5 @@
-import { AbstractDomFormField } from 'formlayer';
+import { defineField } from 'formlayer';
+import type { DefinedFieldClass } from 'formlayer';
 import type { Configuration, State, WidgetMethods } from 'altcha/types';
 
 type AltchaWidget = HTMLElement & WidgetMethods;
@@ -8,259 +9,220 @@ interface StateChangeDetail {
   payload?: string;
 }
 
+/** What a challenge resolver gets to look at. */
+export interface AltchaChallengeContext {
+  wrapper: HTMLElement;
+  hiddenInput: HTMLInputElement;
+  /** A pre-rendered `<altcha-widget>` for this field, if any. */
+  widget: HTMLElement | null;
+}
+
+/** Resolve the ALTCHA challenge: a URL string, a JSON string or an object. */
+export type AltchaChallengeResolver = (ctx: AltchaChallengeContext) => string | object | null;
+
 /**
- * Shared ALTCHA field base: mounts an `<altcha-widget>` beside a hidden input
- * and syncs the verified payload into form state.
+ * Build an ALTCHA field type: mounts an `<altcha-widget>` beside a hidden input
+ * and syncs the verified payload into the field value. Variants only differ in
+ * how they find the challenge.
  */
-export abstract class AltchaFieldBase extends AbstractDomFormField {
-  /** Assigned in mount(); `declare` avoids TS class-field init wiping it after super(). */
-  declare protected hiddenInput: HTMLInputElement;
-  private widget: AltchaWidget | null = null;
-  private liveRegion: HTMLElement | null = null;
-  private container: HTMLElement | null = null;
-  private createdHiddenInput = false;
-  private createdContainer = false;
+export function createAltchaField(resolveChallenge: AltchaChallengeResolver): DefinedFieldClass {
+  return defineField({
+    setup(ctx) {
+      const { wrapper, name, signal } = ctx;
+      let widget = findAltchaWidget(wrapper, name);
+      let liveRegion: HTMLElement | null = null;
+      let container: HTMLElement | null = null;
+      const hidden = resolveHiddenInput(wrapper, name);
+      const hiddenInput = hidden.input;
 
-  protected mount(): void {
-    this.widget = this.findAltchaWidget();
-    this.hiddenInput = this.resolveHiddenInput();
-    this.setControlElement(this.hiddenInput);
-    void this.initWidget();
-  }
+      ctx.setControl(hiddenInput);
 
-  protected readValue(): string {
-    return this.hiddenInput.value;
-  }
+      const setPayload = (payload: string) => {
+        hiddenInput.value = payload;
+        ctx.commit();
+      };
 
-  protected writeValue(value: string): void {
-    this.hiddenInput.value = value;
-  }
+      const syncHiddenInputFromWidget = () => {
+        if (!widget) return;
+        const widgetName = widget.getAttribute('name') ?? name;
+        const selector = `input[type="hidden"][name="${CSS.escape(widgetName)}"]`;
+        const widgetInput = widget.querySelector<HTMLInputElement>(selector)
+          ?? wrapper.querySelector<HTMLInputElement>(selector)
+          ?? widget.closest('form')?.querySelector<HTMLInputElement>(selector)
+          ?? null;
+        if (!widgetInput?.value || widgetInput === hiddenInput) return;
+        hiddenInput.value = widgetInput.value;
+      };
 
-  protected onDestroy(): void {
-    if (this.createdContainer) {
-      this.container?.remove();
-    }
-    if (this.createdHiddenInput) {
-      this.hiddenInput?.remove();
-    }
-    this.widget = null;
-    this.liveRegion = null;
-    this.container = null;
-  }
+      const announceState = (state: string) => {
+        if (!liveRegion || !widget) return;
+        try {
+          if (typeof widget.getConfiguration === 'function') {
+            const config = widget.getConfiguration() as Configuration & { strings?: Record<string, string> };
+            liveRegion.textContent = (config.strings ?? {})[state] ?? '';
+            return;
+          }
+        } catch { /* widget not yet ready */ }
+        liveRegion.textContent = '';
+      };
 
-  /** Resolve the ALTCHA challenge (URL string or JSON object). */
-  protected abstract resolveChallenge(): string | object | null;
+      const bindWidget = () => {
+        if (!widget) return;
+        widget.addEventListener('statechange', (ev: Event) => {
+          const detail = (ev as CustomEvent<StateChangeDetail>).detail;
+          if (!detail) return;
+          syncHiddenInputFromWidget();
+          announceState(detail.state);
+          setPayload(detail.state === 'verified' && detail.payload ? detail.payload : '');
+        }, { signal });
 
-  /**
-   * Find a pre-rendered `<altcha-widget>` inside the wrapper or in the same form
-   * (TYPO3 often uses a full `tx_form_formframework[...][identifier]` name).
-   */
-  protected findAltchaWidget(): AltchaWidget | null {
-    const inWrapper = this.wrapper.querySelector('altcha-widget');
-    if (inWrapper) return inWrapper as AltchaWidget;
+        widget.addEventListener('verified', (ev: Event) => {
+          const target = ev.target;
+          if (!(target instanceof HTMLElement)) return;
+          const checkbox = target.querySelector<HTMLInputElement>('input[type="checkbox"]');
+          if (checkbox) checkbox.disabled = true;
+          syncHiddenInputFromWidget();
+        }, { signal });
+      };
 
-    const form = this.wrapper.closest('form');
-    if (!form) return null;
+      const initWidget = async () => {
+        try {
+          await import('altcha');
+          await loadI18n();
+        } catch (err) {
+          console.warn(`[FormLayer] AltchaField "${name}" failed to load altcha:`, err);
+          return;
+        }
+        if (signal.aborted) return;
 
-    const widgets = [...form.querySelectorAll('altcha-widget')];
-    if (widgets.length === 0) return null;
+        if (widget) {
+          bindWidget();
+          return;
+        }
 
-    const match = widgets.find((widget) => this.widgetMatchesField(widget));
-    if (match) return match as AltchaWidget;
+        const challenge = resolveChallenge({ wrapper, hiddenInput, widget });
+        if (challenge === null || !isValidChallenge(challenge)) {
+          console.warn(
+            `[FormLayer] AltchaField "${name}" has no challenge URL or JSON — `
+            + 'ensure the TYPO3 partial renders `<altcha-widget challenge="...">` inside the '
+            + '`[data-form-field]` wrapper, or set `data-altcha-challenge` on the wrapper/hidden input.',
+          );
+          return;
+        }
 
-    return widgets.length === 1 ? (widgets[0] as AltchaWidget) : null;
-  }
+        const created = document.createElement('altcha-widget') as AltchaWidget;
+        created.setAttribute('challenge', typeof challenge === 'string' ? challenge : JSON.stringify(challenge));
+        created.setAttribute('auto', 'onfocus');
+        created.setAttribute('hidelogo', 'true');
+        created.setAttribute('hidefooter', 'true');
+        created.setAttribute('name', `_altcha_internal_${name}`);
+        const lang = detectLanguage();
+        if (lang) created.setAttribute('language', lang);
+        widget = created;
 
-  /** Match TYPO3 field names like `tx_form_formframework[form-1][altcha-1]`. */
-  protected widgetMatchesField(widget: Element): boolean {
-    const widgetName = widget.getAttribute('name');
-    if (!widgetName) return false;
-    if (widgetName === this.name) return true;
-    if (widgetName.endsWith(`[${this.name}]`)) return true;
+        liveRegion = document.createElement('span');
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.setAttribute('aria-atomic', 'true');
+        liveRegion.className = 'visually-hidden';
 
-    const bracketed = widgetName.match(/\[([^\]]+)\]$/);
-    return bracketed?.[1] === this.name;
-  }
+        container = document.createElement('div');
+        container.className = 'altcha-container';
+        container.append(created, liveRegion);
+        hiddenInput.insertAdjacentElement('afterend', container);
+        bindWidget();
+      };
 
-  private resolveHiddenInput(): HTMLInputElement {
-    const byName = this.wrapper.querySelector<HTMLInputElement>(
-      `input[type="hidden"][name="${CSS.escape(this.name)}"]`,
-    );
-    if (byName) return byName;
+      void initWidget();
 
-    // TYPO3: tx_form_formframework[form-1][field-id]
-    const byBracketedName = this.wrapper.querySelector<HTMLInputElement>(
-      `input[type="hidden"][name$="[${CSS.escape(this.name)}]"]`,
-    );
-    if (byBracketedName) return byBracketedName;
+      return {
+        read: () => hiddenInput.value,
+        write: (value) => { hiddenInput.value = String(value); },
+        focus: () => (widget?.querySelector<HTMLElement>('input, button') ?? hiddenInput).focus(),
+        destroy: () => {
+          container?.remove();
+          if (hidden.created) hiddenInput.remove();
+          widget = null;
+          liveRegion = null;
+          container = null;
+        },
+      };
+    },
+  });
+}
 
-    const anyHidden = [...this.wrapper.querySelectorAll<HTMLInputElement>('input[type="hidden"]')]
-      .find((input) => input.name !== '__altcha_nojs');
-    if (anyHidden) return anyHidden;
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = this.name;
-    input.value = '';
-    this.wrapper.appendChild(input);
-    this.createdHiddenInput = true;
-    return input;
-  }
+/**
+ * Find a pre-rendered `<altcha-widget>` inside the wrapper or in the same form
+ * (TYPO3 often uses a full `tx_form_formframework[...][identifier]` name).
+ */
+export function findAltchaWidget(wrapper: HTMLElement, name: string): AltchaWidget | null {
+  const inWrapper = wrapper.querySelector('altcha-widget');
+  if (inWrapper) return inWrapper as AltchaWidget;
 
-  private async initWidget(): Promise<void> {
-    try {
-      await import('altcha');
-      await this.loadI18n();
-    } catch (err) {
-      console.warn(`[FormLayer] AltchaField "${this.name}" failed to load altcha:`, err);
-      return;
-    }
+  const form = wrapper.closest('form');
+  if (!form) return null;
 
-    if (this.signal.aborted) return;
+  const widgets = [...form.querySelectorAll('altcha-widget')];
+  if (widgets.length === 0) return null;
 
-    if (this.widget) {
-      this.bindWidget();
-      return;
-    }
+  const match = widgets.find((widget) => widgetMatchesField(widget, name));
+  if (match) return match as AltchaWidget;
 
-    const challenge = this.resolveChallenge();
-    if (challenge === null || !this.isValidChallenge(challenge)) {
-      console.warn(
-        `[FormLayer] AltchaField "${this.name}" has no challenge URL or JSON — `
-        + 'ensure the TYPO3 partial renders `<altcha-widget challenge="...">` inside the '
-        + '`[data-form-field]` wrapper, or set `data-altcha-challenge` on the wrapper/hidden input.',
-      );
-      return;
-    }
+  return widgets.length === 1 ? (widgets[0] as AltchaWidget) : null;
+}
 
-    this.widget = document.createElement('altcha-widget') as AltchaWidget;
-    this.applyChallenge(this.widget, challenge);
+/** Match TYPO3 field names like `tx_form_formframework[form-1][altcha-1]`. */
+function widgetMatchesField(widget: Element, name: string): boolean {
+  const widgetName = widget.getAttribute('name');
+  if (!widgetName) return false;
+  if (widgetName === name) return true;
+  if (widgetName.endsWith(`[${name}]`)) return true;
+  const bracketed = widgetName.match(/\[([^\]]+)\]$/);
+  return bracketed?.[1] === name;
+}
 
-    this.widget.setAttribute('auto', 'onfocus');
-    this.widget.setAttribute('hidelogo', 'true');
-    this.widget.setAttribute('hidefooter', 'true');
-    this.widget.setAttribute('name', `_altcha_internal_${this.name}`);
+function resolveHiddenInput(wrapper: HTMLElement, name: string): { input: HTMLInputElement; created: boolean } {
+  const byName = wrapper.querySelector<HTMLInputElement>(`input[type="hidden"][name="${CSS.escape(name)}"]`);
+  if (byName) return { input: byName, created: false };
 
-    const lang = this.detectLanguage();
-    if (lang) {
-      this.widget.setAttribute('language', lang);
-    }
+  // TYPO3: tx_form_formframework[form-1][field-id]
+  const byBracketedName = wrapper.querySelector<HTMLInputElement>(`input[type="hidden"][name$="[${CSS.escape(name)}]"]`);
+  if (byBracketedName) return { input: byBracketedName, created: false };
 
-    this.liveRegion = document.createElement('span');
-    this.liveRegion.setAttribute('aria-live', 'polite');
-    this.liveRegion.setAttribute('aria-atomic', 'true');
-    this.liveRegion.className = 'visually-hidden';
+  const anyHidden = [...wrapper.querySelectorAll<HTMLInputElement>('input[type="hidden"]')]
+    .find((input) => input.name !== '__altcha_nojs');
+  if (anyHidden) return { input: anyHidden, created: false };
 
-    this.container = document.createElement('div');
-    this.container.className = 'altcha-container';
-    this.container.append(this.widget, this.liveRegion);
-    this.createdContainer = true;
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = name;
+  input.value = '';
+  wrapper.appendChild(input);
+  return { input, created: true };
+}
 
-    this.hiddenInput.insertAdjacentElement('afterend', this.container);
-    this.bindWidget();
-  }
+function isValidChallenge(challenge: string | object | null): boolean {
+  if (!challenge) return false;
+  if (typeof challenge === 'object') return true;
+  if (challenge.startsWith('{')) return true;
+  return challenge.startsWith('http') || challenge.startsWith('/');
+}
 
-  private bindWidget(): void {
-    if (!this.widget) return;
-    const signal = this.signal;
+function detectLanguage(): string | null {
+  const htmlLang = document.documentElement.lang;
+  return htmlLang ? htmlLang.split('-')[0].toLowerCase() : null;
+}
 
-    this.widget.addEventListener('statechange', (ev: Event) => {
-      const detail = (ev as CustomEvent<StateChangeDetail>).detail;
-      if (!detail) return;
-
-      this.syncHiddenInputFromWidget();
-      this.announceState(detail.state);
-
-      if (detail.state === 'verified' && detail.payload) {
-        this.markDirty();
-        this.markTouched();
-        this.setValue(detail.payload);
-      } else {
-        this.setValue('');
-      }
-    }, { signal });
-
-    this.widget.addEventListener('verified', (ev: Event) => {
-      const target = ev.target;
-      if (!(target instanceof HTMLElement)) return;
-
-      const checkbox = target.querySelector<HTMLInputElement>('input[type="checkbox"]');
-      if (checkbox) {
-        checkbox.disabled = true;
-      }
-
-      this.syncHiddenInputFromWidget();
-    }, { signal });
-  }
-
-  /** Copy the verified payload from ALTCHA's internal input into the form field input. */
-  private syncHiddenInputFromWidget(): void {
-    if (!this.widget) return;
-
-    const widgetName = this.widget.getAttribute('name') ?? this.name;
-    const widgetInput = this.findWidgetHiddenInput(widgetName);
-    if (!widgetInput?.value || widgetInput === this.hiddenInput) return;
-
-    this.hiddenInput.value = widgetInput.value;
-  }
-
-  private findWidgetHiddenInput(widgetName: string): HTMLInputElement | null {
-    const selector = `input[type="hidden"][name="${CSS.escape(widgetName)}"]`;
-    return (
-      this.widget?.querySelector<HTMLInputElement>(selector)
-      ?? this.wrapper.querySelector<HTMLInputElement>(selector)
-      ?? this.widget?.closest('form')?.querySelector<HTMLInputElement>(selector)
-      ?? null
-    );
-  }
-
-  private isValidChallenge(challenge: string | object | null): boolean {
-    if (!challenge) return false;
-    if (typeof challenge === 'object') return true;
-    if (challenge.startsWith('{')) return true;
-    return challenge.startsWith('http') || challenge.startsWith('/');
-  }
-
-  private applyChallenge(widget: AltchaWidget, challenge: string | object): void {
-    widget.setAttribute(
-      'challenge',
-      typeof challenge === 'string' ? challenge : JSON.stringify(challenge),
-    );
-  }
-
-  private announceState(state: string): void {
-    if (!this.liveRegion || !this.widget) return;
-
-    try {
-      if (typeof this.widget.getConfiguration === 'function') {
-        const config = this.widget.getConfiguration() as Configuration & {
-          strings?: Record<string, string>;
-        };
-        const strings = config.strings ?? {};
-        this.liveRegion.textContent = strings[state] ?? '';
-        return;
-      }
-    } catch { /* widget not yet ready */ }
-
-    this.liveRegion.textContent = '';
-  }
-
-  protected detectLanguage(): string | null {
-    const htmlLang = document.documentElement.lang;
-    if (htmlLang) {
-      return htmlLang.split('-')[0].toLowerCase();
-    }
-    return null;
-  }
-
-  private async loadI18n(): Promise<void> {
-    const lang = this.detectLanguage();
-    if (!lang || lang === 'en') return;
-
-    try {
-      await import(`altcha/i18n/${lang}`);
-    } catch {
-      /* translation not available — widget falls back to English */
-    }
+async function loadI18n(): Promise<void> {
+  const lang = detectLanguage();
+  if (!lang || lang === 'en') return;
+  try {
+    await import(`altcha/i18n/${lang}`);
+  } catch {
+    /* translation not available — widget falls back to English */
   }
 }
+
