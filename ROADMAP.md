@@ -4,7 +4,7 @@ This roadmap covers a **0.4 bugfix release** and **FormLayer v2**. It comes out 
 
 **Goal for v2:** a small base library that is easy to extend with custom markup, field types, events and validators. A CMS integrator with a little TypeScript experience should be able to build something like a country combobox with flags and grouped options without touching keyboard handling or ARIA code.
 
-Tracking issue: [`roadmap/issues/00-tracking.md`](roadmap/issues/00-tracking.md). Issue drafts live in [`roadmap/issues/`](roadmap/issues/). Replace these links with issue numbers once they are created on GitHub.
+Tracking issue: [#5](https://github.com/kimamov/FormLayer/issues/5). Each milestone is a sub-issue of it. The original drafts are kept in [`roadmap/issues/`](roadmap/issues/).
 
 ---
 
@@ -22,16 +22,16 @@ Tracking issue: [`roadmap/issues/00-tracking.md`](roadmap/issues/00-tracking.md)
 
 | # | Milestone | Issue | Depends on |
 |---|-----------|-------|------------|
-| 0 | 0.4 bugfix release | [01](roadmap/issues/01-bugfix-0.4.md) | — |
-| 1 | Unified field core and `defineField()` | [02](roadmap/issues/02-field-core.md) | 0 |
-| 2 | Validation pipeline | [03](roadmap/issues/03-validation-pipeline.md) | 1 |
-| 3 | Opt-in server-authoritative validation (core) | [04](roadmap/issues/04-server-validation-core.md) | 2 |
-| 4 | TYPO3 server-validation transport | [05](roadmap/issues/05-typo3-server-validation.md) | 3 |
-| 5 | DOM events, submission result, form-level errors, plugins | [06](roadmap/issues/06-events-submission.md) | 1 |
-| 6 | Combobox v2: markup-first, optgroups, render hooks | [07](roadmap/issues/07-combobox-v2.md) | 1, 2 |
-| 7 | Scoped base CSS and per-plugin CSS | [08](roadmap/issues/08-css.md) | — |
-| 8 | Conditional logic: groups, chained conditions, no flash on load | [09](roadmap/issues/09-conditional-logic.md) | 1, 5 |
-| 9 | Repeatable field groups | [10](roadmap/issues/10-repeatable-groups.md) | 1, 2, 5 |
+| 0 | 0.4 bugfix release | [#6](https://github.com/kimamov/FormLayer/issues/6) | — |
+| 1 | Unified field core and `defineField()` | [#8](https://github.com/kimamov/FormLayer/issues/8) | 0 |
+| 2 | Validation pipeline | [#9](https://github.com/kimamov/FormLayer/issues/9) | 1 |
+| 3 | Opt-in server-authoritative validation (core) | [#7](https://github.com/kimamov/FormLayer/issues/7) | 2 |
+| 4 | TYPO3 server-validation transport | [#10](https://github.com/kimamov/FormLayer/issues/10) | 3 |
+| 5 | DOM events, submission result, form-level errors, plugins | [#11](https://github.com/kimamov/FormLayer/issues/11) | 1 |
+| 6 | Combobox v2: markup-first, optgroups, render hooks | [#12](https://github.com/kimamov/FormLayer/issues/12) | 1, 2 |
+| 7 | Scoped base CSS and per-plugin CSS | [#13](https://github.com/kimamov/FormLayer/issues/13) | — |
+| 8 | Conditional logic: groups, chained conditions, no flash on load | [#14](https://github.com/kimamov/FormLayer/issues/14) | 1, 5 |
+| 9 | Repeatable field groups | [#15](https://github.com/kimamov/FormLayer/issues/15) | 1, 2, 5 |
 
 Milestones 5 and 7 can run in parallel with 2–4.
 
