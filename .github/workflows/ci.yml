@@ -29,3 +29,5 @@ jobs:
         run: npm test
       - name: Build core and plugins
         run: npm run build:all
+      - name: Typecheck plugins (against the built core)
+        run: npm run typecheck:plugins
