@@ -59,6 +59,9 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private _isSubmitting = false;
   private _allowSubmit = false;
   private _activeSubmitter: HTMLElement | null = null;
+  private _destroyed = false;
+  private readonly pending = new Set<Promise<unknown>>();
+  private readonly destroyCallbacks: Array<() => void> = [];
 
   constructor(formEl: HTMLFormElement, submitFn: FormSubmitFunction, options?: FormControllerOptions) {
     this.formEl = formEl;
@@ -80,6 +83,34 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
   get fieldsMap(): Readonly<CustomFieldsMap> {
     return this._fieldsMap;
+  }
+
+  /**
+   * Resolves once every pending lazy field and form plugin has loaded
+   * (including ones that start loading while waiting). Submitting waits for it,
+   * so lazy fields are never skipped by validation.
+   */
+  get ready(): Promise<void> {
+    return this.waitForPending();
+  }
+
+  /** Track async setup work (lazy fields, plugins) so {@link ready} waits for it. */
+  track<T>(promise: Promise<T>): Promise<T> {
+    this.pending.add(promise);
+    const remove = () => { this.pending.delete(promise); };
+    promise.then(remove, remove);
+    return promise;
+  }
+
+  /** Register a callback that runs once when this controller is destroyed. */
+  onDestroy(callback: () => void): void {
+    this.destroyCallbacks.push(callback);
+  }
+
+  private async waitForPending(): Promise<void> {
+    while (this.pending.size > 0) {
+      await Promise.allSettled([...this.pending]);
+    }
   }
 
   getField(name: string): FieldState | undefined {
@@ -133,6 +164,8 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   destroy(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
     if (this._isSubmitting) {
       this.setSubmitting(false, this._activeSubmitter);
     }
@@ -147,6 +180,13 @@ export class FormController implements FormControllerApi, FormPluginHost {
     }
     this.fields.clear();
     this.eventBus.destroy();
+    for (const callback of this.destroyCallbacks.splice(0)) {
+      try {
+        callback();
+      } catch (err) {
+        console.error('[FormLayer] Error in destroy callback:', err);
+      }
+    }
   }
 
   submit(): void {
@@ -167,7 +207,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
   async attachFormPlugin(plugin: FormPlugin): Promise<void> {
     this.formPlugins.push(plugin);
-    await plugin.init(this.formEl, this);
+    await this.track(Promise.resolve(plugin.init(this.formEl, this)));
   }
 
   getFieldValue(name: string): string | undefined {
@@ -246,13 +286,19 @@ export class FormController implements FormControllerApi, FormPluginHost {
     const factory = type ? this._fieldsMap[type] : undefined;
 
     if (factory && isLazyFactory(factory)) {
-      createFieldAsync(wrapper, { factory })
-        .then((field) => {
-          if (!this.fields.has(name)) this.registerField(field, name);
-        })
-        .catch((err) => {
-          console.warn(`[FormsModule] Failed to load field "${type}":`, err);
-        });
+      this.track(
+        createFieldAsync(wrapper, { factory, fieldOptions: this.fieldOptions })
+          .then((field) => {
+            if (this._destroyed || !wrapper.isConnected) {
+              field.destroy();
+              return;
+            }
+            if (!this.fields.has(name)) this.registerField(field, name);
+          })
+          .catch((err) => {
+            console.warn(`[FormLayer] Failed to load field "${type}":`, err);
+          }),
+      );
       return;
     }
 
@@ -260,7 +306,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
       const field = createField(wrapper, { customFields: this._fieldsMap, fieldOptions: this.fieldOptions });
       this.registerField(field, name);
     } catch (err) {
-      console.warn(`[FormsModule] Could not init field "${name}":`, err);
+      console.warn(`[FormLayer] Could not init field "${name}":`, err);
     }
   }
 
@@ -330,11 +376,14 @@ export class FormController implements FormControllerApi, FormPluginHost {
         const submitter = (e as SubmitEvent).submitter instanceof HTMLElement
           ? (e as SubmitEvent).submitter
           : null;
+        // `formnovalidate` on the submitter (e.g. a multistep "Back" button) skips client validation.
+        const skipValidation = !!submitter && (submitter as HTMLButtonElement | HTMLInputElement).formNoValidate === true;
         this.setSubmitting(true, submitter);
         this.eventBus.emit('form:submit', { formId: this.id, state: this.getState() });
 
         try {
-          const isValid = await this.validate();
+          await this.ready;
+          const isValid = skipValidation || await this.validate();
 
           if (isValid) {
             const formData = new FormData(this.formEl, submitter ?? undefined);

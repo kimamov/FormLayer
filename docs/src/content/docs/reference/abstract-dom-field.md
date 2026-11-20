@@ -166,9 +166,13 @@ initTypo3Forms({
 Or lazy-load:
 
 ```typescript
+import { lazy } from 'formlayer';
+
 fieldsMap: {
-  'image-input-with-preview': () => import('./fields/image-input-with-preview'),
+  'image-input-with-preview': lazy(() => import('./fields/image-input-with-preview')),
 }
 ```
 
 The factory must resolve to `{ default: FormFieldClass }`.
+
+Wrap loaders in `lazy()` so FormLayer can tell them apart from field classes. Unwrapped `() => import(...)` loaders still work, but `lazy()` is the reliable form.

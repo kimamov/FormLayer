@@ -35,7 +35,7 @@ export class FieldEmitter {
       try {
         handler({ ...state });
       } catch (err) {
-        console.error(`[FormsModule] Error in field "${fieldName}" "${event}" handler:`, err);
+        console.error(`[FormLayer] Error in field "${fieldName}" "${event}" handler:`, err);
       }
     }
   }

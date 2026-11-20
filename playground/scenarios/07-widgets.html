@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Widgets · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="widgets-title">Your profile</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> a checkbox group with a TYPO3 <code>Count</code> rule (1 to 3), a combobox over a <code>&lt;select&gt;</code> with <code>&lt;optgroup&gt;</code> and a server-rendered listbox with flags (<code>data-fl-part="listbox"</code>, the v2 target markup), and a file upload with <code>FileSize</code> and the TYPO3 <code>MimeType</code> rule.</p>
+  </aside>
+
+  <form id="widgets" action="/api/forms/widgets" method="post" data-ajax="1" enctype="multipart/form-data" aria-labelledby="widgets-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <fieldset class="field" data-form-field="interests"
+              data-validate='[{"type":"Count","options":{"minimum":1,"maximum":3,"message":"Choose from 1 to 3 interests."}}]'
+              aria-describedby="interests-hint">
+      <legend>Interests <span aria-hidden="true">*</span></legend>
+      <p id="interests-hint" class="hint">Choose from 1 to 3.</p>
+      <div class="choice"><input type="checkbox" id="interests-design" name="interests[]" value="design"><label for="interests-design">Design</label></div>
+      <div class="choice"><input type="checkbox" id="interests-code" name="interests[]" value="code"><label for="interests-code">Code</label></div>
+      <div class="choice"><input type="checkbox" id="interests-content" name="interests[]" value="content"><label for="interests-content">Content</label></div>
+      <div class="choice"><input type="checkbox" id="interests-seo" name="interests[]" value="seo"><label for="interests-seo">SEO</label></div>
+      <p id="interests-errors" class="invalid-feedback"></p>
+    </fieldset>
+
+    <div class="field" data-form-field="country" data-field-type="combobox"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Choose a country."}}]'>
+      <label for="country">Country <span aria-hidden="true">*</span></label>
+      <select id="country" name="country" autocomplete="country" required>
+        <option value="">Choose a country</option>
+        <optgroup label="Europe">
+          <option value="AT" data-flag="🇦🇹">Austria</option>
+          <option value="DE" data-flag="🇩🇪">Germany</option>
+          <option value="CH" data-flag="🇨🇭">Switzerland</option>
+        </optgroup>
+        <optgroup label="Americas">
+          <option value="CA" data-flag="🇨🇦">Canada</option>
+          <option value="US" data-flag="🇺🇸">United States</option>
+        </optgroup>
+      </select>
+      <ul data-fl-part="listbox" hidden>
+        <li role="group" aria-labelledby="country-group-eu">
+          <span id="country-group-eu">Europe</span>
+          <ul role="none">
+            <li role="option" data-value="AT"><span aria-hidden="true">🇦🇹</span> Austria</li>
+            <li role="option" data-value="DE"><span aria-hidden="true">🇩🇪</span> Germany</li>
+            <li role="option" data-value="CH"><span aria-hidden="true">🇨🇭</span> Switzerland</li>
+          </ul>
+        </li>
+        <li role="group" aria-labelledby="country-group-am">
+          <span id="country-group-am">Americas</span>
+          <ul role="none">
+            <li role="option" data-value="CA"><span aria-hidden="true">🇨🇦</span> Canada</li>
+            <li role="option" data-value="US"><span aria-hidden="true">🇺🇸</span> United States</li>
+          </ul>
+        </li>
+      </ul>
+      <p id="country-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="portfolio"
+         data-validate='[{"type":"FileSize","options":{"maximum":"1M","message":"Choose a file smaller than 1 MB."}},{"type":"MimeType","options":{"allowedMimeTypes":["application/pdf"],"message":"Choose a PDF file."}}]'>
+      <label for="portfolio">Portfolio (optional, PDF up to 1 MB)</label>
+      <input id="portfolio" name="portfolio" type="file" accept="application/pdf">
+      <p id="portfolio-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Save profile</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

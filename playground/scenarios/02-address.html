@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Address · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="address-title">Delivery details</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> nested field names (<code>billing[city]</code> ↔ field <code>billing.city</code>), <code>billing</code>/<code>shipping</code> autocomplete scopes, and a whole fieldset that depends on a checkbox (<code>data-client-variants</code> on the group, not on each field).</p>
+    <p><strong>Try:</strong> billing postal code <code>00000</code> gives a server error on a nested field.</p>
+  </aside>
+
+  <form id="address" action="/api/forms/address" method="post" data-ajax="1" aria-labelledby="address-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <fieldset>
+      <legend>Billing address</legend>
+
+      <div class="field" data-form-field="billing.name"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the billing name."}}]'>
+        <label for="billing-name">Full name <span aria-hidden="true">*</span></label>
+        <input id="billing-name" name="billing[name]" type="text" autocomplete="billing name" required>
+        <p id="billing-name-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="billing.address"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the billing address."}}]'>
+        <label for="billing-address">Street address <span aria-hidden="true">*</span></label>
+        <textarea id="billing-address" name="billing[address]" rows="3" autocomplete="billing street-address" required maxlength="300"></textarea>
+        <p id="billing-address-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="billing.postalCode">
+        <label for="billing-postal-code">Postal code (optional)</label>
+        <input id="billing-postal-code" name="billing[postalCode]" type="text" autocomplete="billing postal-code" maxlength="20">
+        <p id="billing-postal-code-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="billing.city"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the town or city."}}]'>
+        <label for="billing-city">Town or city <span aria-hidden="true">*</span></label>
+        <input id="billing-city" name="billing[city]" type="text" autocomplete="billing address-level2" required>
+        <p id="billing-city-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="billing.country"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Choose a country."}}]'>
+        <label for="billing-country">Country <span aria-hidden="true">*</span></label>
+        <select id="billing-country" name="billing[country]" autocomplete="billing country" required>
+          <option value="">Choose a country</option>
+          <option value="AT">Austria</option>
+          <option value="DE">Germany</option>
+          <option value="CH">Switzerland</option>
+        </select>
+        <p id="billing-country-errors" class="invalid-feedback"></p>
+      </div>
+    </fieldset>
+
+    <div class="field" data-form-field="shippingSameAsBilling">
+      <div class="choice">
+        <input type="checkbox" id="shipping-same" name="shippingSameAsBilling" value="1" checked aria-controls="shipping">
+        <label for="shipping-same">Ship to the billing address</label>
+      </div>
+    </div>
+
+    <fieldset id="shipping"
+              data-client-variants='[{"condition":"formValue(\"shippingSameAsBilling\") != \"1\"","enabled":true}]'>
+      <legend>Shipping address</legend>
+
+      <div class="field" data-form-field="shipping.name"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the recipient name."}}]'>
+        <label for="shipping-name">Recipient name <span aria-hidden="true">*</span></label>
+        <input id="shipping-name" name="shipping[name]" type="text" autocomplete="shipping name" required>
+        <p id="shipping-name-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="shipping.address"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the shipping address."}}]'>
+        <label for="shipping-address">Street address <span aria-hidden="true">*</span></label>
+        <textarea id="shipping-address" name="shipping[address]" rows="3" autocomplete="shipping street-address" required maxlength="300"></textarea>
+        <p id="shipping-address-errors" class="invalid-feedback"></p>
+      </div>
+
+      <div class="field" data-form-field="shipping.city"
+           data-validate='[{"type":"NotEmpty","options":{"message":"Enter the town or city."}}]'>
+        <label for="shipping-city">Town or city <span aria-hidden="true">*</span></label>
+        <input id="shipping-city" name="shipping[city]" type="text" autocomplete="shipping address-level2" required>
+        <p id="shipping-city-errors" class="invalid-feedback"></p>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="submit">Save delivery details</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

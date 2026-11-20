@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multistep · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="trip-title">Book a trip</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> every step is rendered by the mock server (<code>server/forms.ts</code>) and swapped in as HTML, like TYPO3 multistep forms. It covers re-enhancing each new step, moving focus to the step heading, a Back button with <code>formnovalidate</code>, and server errors on step 2.</p>
+    <p><strong>Try:</strong> choose "Atlantis" on step 2 to get a server error. Press Back on step 2 with empty fields.</p>
+  </aside>
+
+  <!-- ssr:trip -->
+</main>
+</body>
+</html>

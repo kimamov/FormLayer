@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conditional fields · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="conditional-title">Contact preferences</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> fields shown by a radio choice, a required "please specify" field, a chained condition (<em>account manager</em> depends on <em>company size</em>, which depends on <em>company</em>), hidden fields left out of validation and the submitted data, and whether hidden fields flash visible on load.</p>
+    <p><strong>Try:</strong> tick "company", choose "251 or more", then untick "company". The account-manager field should disappear too.</p>
+  </aside>
+
+  <form id="conditional" action="/api/forms/conditional" method="post" data-ajax="1" aria-labelledby="conditional-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <fieldset class="field" data-form-field="contactPreference"
+              data-validate='[{"type":"NotEmpty","options":{"message":"Choose how we should contact you."}}]'>
+      <legend>How should we contact you? <span aria-hidden="true">*</span></legend>
+      <div class="choice"><input type="radio" id="pref-email" name="contactPreference" value="email" required><label for="pref-email">Email</label></div>
+      <div class="choice"><input type="radio" id="pref-phone" name="contactPreference" value="phone"><label for="pref-phone">Phone</label></div>
+      <div class="choice"><input type="radio" id="pref-post" name="contactPreference" value="post"><label for="pref-post">Post</label></div>
+      <p id="contactPreference-errors" class="invalid-feedback"></p>
+    </fieldset>
+
+    <div class="field" data-form-field="email"
+         data-client-variants='[{"condition":"formValue(\"contactPreference\") == \"email\"","enabled":true}]'
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}}]'>
+      <label for="email">Email <span aria-hidden="true">*</span></label>
+      <input id="email" name="email" type="email" autocomplete="email" required autocorrect="off" autocapitalize="none" spellcheck="false">
+      <p id="email-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="phone"
+         data-client-variants='[{"condition":"formValue(\"contactPreference\") == \"phone\"","enabled":true}]'
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your phone number."}}]'>
+      <label for="phone">Phone <span aria-hidden="true">*</span></label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" required>
+      <p id="phone-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="postalAddress"
+         data-client-variants='[{"condition":"formValue(\"contactPreference\") == \"post\"","enabled":true}]'
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your postal address."}}]'>
+      <label for="postal-address">Postal address <span aria-hidden="true">*</span></label>
+      <textarea id="postal-address" name="postalAddress" rows="3" autocomplete="street-address" required></textarea>
+      <p id="postal-address-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="referral">
+      <label for="referral">Where did you hear about us? (optional)</label>
+      <select id="referral" name="referral">
+        <option value="">Choose an option</option>
+        <option value="search">Search engine</option>
+        <option value="friend">A friend</option>
+        <option value="event">An event</option>
+        <option value="other">Somewhere else</option>
+      </select>
+    </div>
+
+    <div class="field" data-form-field="referralOther"
+         data-client-variants='[{"condition":"formValue(\"referral\") == \"other\"","enabled":true}]'
+         data-validate='[{"type":"NotEmpty","options":{"message":"Tell us where you heard about us."}}]'>
+      <label for="referral-other">Where else? <span aria-hidden="true">*</span></label>
+      <input id="referral-other" name="referralOther" type="text" required>
+      <p id="referral-other-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="hasCompany">
+      <div class="choice">
+        <input type="checkbox" id="has-company" name="hasCompany" value="1">
+        <label for="has-company">I’m contacting you on behalf of a company</label>
+      </div>
+    </div>
+
+    <div class="field" data-form-field="companySize"
+         data-client-variants='[{"condition":"formValue(\"hasCompany\") == \"1\"","enabled":true}]'
+         data-validate='[{"type":"NotEmpty","options":{"message":"Choose your company size."}}]'>
+      <label for="company-size">Company size <span aria-hidden="true">*</span></label>
+      <select id="company-size" name="companySize" required>
+        <option value="">Choose a size</option>
+        <option value="small">1 to 10 people</option>
+        <option value="medium">11 to 250 people</option>
+        <option value="large">251 or more</option>
+      </select>
+      <p id="company-size-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="accountManager"
+         data-client-variants='[{"condition":"formValue(\"companySize\") == \"large\"","enabled":true}]'>
+      <div class="choice">
+        <input type="checkbox" id="account-manager" name="accountManager" value="1">
+        <label for="account-manager">I’d like a dedicated account manager</label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Save preferences</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="contact-title">Contact us</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> validation timing, required fields, a radio group, a consent checkbox, focus after a failed submit, a server-only rule, a form-level server error, and the success message.</p>
+    <p><strong>Try:</strong> email <code>taken@example.com</code> (server-only error). A message containing <code>spam</code> gives a form-level error.</p>
+  </aside>
+
+  <form id="contact" action="/api/forms/contact" method="post" data-ajax="1" aria-labelledby="contact-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <div class="field" data-form-field="name"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your name."}}]'>
+      <label for="name">Full name <span aria-hidden="true">*</span></label>
+      <input id="name" name="name" type="text" autocomplete="name" required maxlength="100" enterkeyhint="next">
+      <p id="name-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="email"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter your email address."}},{"type":"EmailAddress","options":{"message":"Enter an email address like name@example.com."}},{"type":"UniqueEmail","server":true}]'>
+      <label for="email">Email <span aria-hidden="true">*</span></label>
+      <input id="email" name="email" type="email" autocomplete="email" required
+             autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="next" aria-describedby="email-hint">
+      <p id="email-hint" class="hint">We only use it to reply to you.</p>
+      <p id="email-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="phone">
+      <label for="phone">Phone (optional)</label>
+      <input id="phone" name="phone" type="tel" autocomplete="tel" enterkeyhint="next">
+      <p id="phone-errors" class="invalid-feedback"></p>
+    </div>
+
+    <fieldset class="field" data-form-field="topic"
+              data-validate='[{"type":"NotEmpty","options":{"message":"Choose a topic."}}]'>
+      <legend>Topic <span aria-hidden="true">*</span></legend>
+      <div class="choice"><input type="radio" id="topic-support" name="topic" value="support" required><label for="topic-support">Support</label></div>
+      <div class="choice"><input type="radio" id="topic-sales" name="topic" value="sales"><label for="topic-sales">Sales</label></div>
+      <div class="choice"><input type="radio" id="topic-press" name="topic" value="press"><label for="topic-press">Press</label></div>
+      <p id="topic-errors" class="invalid-feedback"></p>
+    </fieldset>
+
+    <div class="field" data-form-field="message"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Enter a message."}},{"type":"StringLength","options":{"minimum":10,"maximum":1000,"message":"Enter between 10 and 1,000 characters."}}]'>
+      <label for="message">Message <span aria-hidden="true">*</span></label>
+      <textarea id="message" name="message" rows="5" required minlength="10" maxlength="1000" aria-describedby="message-hint"></textarea>
+      <p id="message-hint" class="hint">10 to 1,000 characters.</p>
+      <p id="message-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="consent"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Agree to the privacy policy to continue."}}]'>
+      <div class="choice">
+        <input type="checkbox" id="consent" name="consent" value="1" required>
+        <label for="consent">I agree to the <a href="#privacy">privacy policy</a> <span aria-hidden="true">*</span></label>
+      </div>
+      <p id="consent-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Send message</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

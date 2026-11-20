@@ -39,7 +39,7 @@ export class EventBus {
       try {
         (handler as (detail: unknown) => void)(detail);
       } catch (err) {
-        console.error(`[FormsModule] Error in "${event}" handler:`, err);
+        console.error(`[FormLayer] Error in "${event}" handler:`, err);
       }
     }
   }

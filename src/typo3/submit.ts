@@ -42,7 +42,7 @@ export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDep
       });
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
-        console.warn('[Typo3Forms] AJAX submit failed:', err);
+        console.warn('[FormLayer] AJAX submit failed:', err);
         hooks?.onSubmitError?.(err as Error, formEl);
         fallbackToNative();
       }
@@ -51,7 +51,7 @@ export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDep
 
     if (!response.ok) {
       const err = new Error(`Server responded with ${response.status}`);
-      console.warn(`[Typo3Forms] ${err.message}, falling back to normal submit`);
+      console.warn(`[FormLayer] ${err.message}, falling back to normal submit`);
       hooks?.onSubmitError?.(err, formEl);
       fallbackToNative();
       return;
@@ -61,7 +61,7 @@ export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDep
     try {
       data = await response.json();
     } catch {
-      console.warn('[Typo3Forms] Invalid JSON response, falling back to normal submit');
+      console.warn('[FormLayer] Invalid JSON response, falling back to normal submit');
       hooks?.onSubmitError?.(new Error('Invalid JSON response'), formEl);
       fallbackToNative();
       return;

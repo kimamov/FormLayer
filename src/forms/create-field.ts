@@ -17,13 +17,40 @@ export interface AddFieldFromElementOptions extends FieldOptions {
   field?: FormFieldFactory;
 }
 
+const LAZY_MARKER = Symbol.for('formlayer.lazyField');
+
+export type LazyFieldLoader = () => Promise<{ default: FormFieldClass }>;
+
 /**
- * A `FormFieldFactory` is either a class (sync) or a lazy loader (async).
- * We distinguish them by constructor arity: classes take a wrapper argument
- * (`fn.length >= 1`), lazy factories take none (`fn.length === 0`).
+ * Mark a loader as a lazy field factory, e.g. `lazy(() => import('./fields/rating'))`.
+ * The field class is loaded on first use (code splitting).
  */
-export function isLazyFactory(factory: FormFieldFactory): factory is () => Promise<{ default: FormFieldClass }> {
-  return typeof factory === 'function' && factory.length === 0;
+export function lazy(loader: LazyFieldLoader): LazyFieldLoader {
+  const marked: LazyFieldLoader = () => loader();
+  Object.defineProperty(marked, LAZY_MARKER, { value: true });
+  return marked;
+}
+
+/** True for `class` declarations and constructor functions with prototype methods. */
+function isClassLike(fn: Function): boolean {
+  if (/^class[\s{]/.test(Function.prototype.toString.call(fn))) return true;
+  const proto = (fn as { prototype?: object }).prototype;
+  return !!proto && Object.getOwnPropertyNames(proto).length > 1;
+}
+
+/**
+ * A `FormFieldFactory` is either a field class (sync) or a lazy loader (async).
+ *
+ * Loaders wrapped with {@link lazy} are always lazy and classes never are.
+ * Unmarked zero-argument functions (`() => import('./x')`) are still treated
+ * as lazy loaders for backwards compatibility. Checking only the arity is not
+ * enough: a subclass without its own constructor also has `length === 0`.
+ */
+export function isLazyFactory(factory: FormFieldFactory): factory is LazyFieldLoader {
+  if (typeof factory !== 'function') return false;
+  if ((factory as unknown as Record<symbol, unknown>)[LAZY_MARKER] === true) return true;
+  if (isClassLike(factory)) return false;
+  return factory.length === 0;
 }
 
 export interface CreateFieldOptions {
@@ -84,7 +111,7 @@ export function createField(wrapper: HTMLElement, options?: CreateFieldOptions):
   }
 
   if (isLazyFactory(factory)) {
-    throw new Error('[FormsModule] Lazy field factory requires createFieldAsync()');
+    throw new Error('[FormLayer] Lazy field factory requires createFieldAsync()');
   }
 
   return finalizeField(new factory(wrapper, opts));

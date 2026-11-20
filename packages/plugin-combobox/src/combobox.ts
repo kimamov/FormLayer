@@ -27,7 +27,7 @@ export default class ComboboxField extends AbstractDomFormField {
   protected mount(): void {
     const select = this.wrapper.querySelector('select');
     if (!select) {
-      throw new Error(`[FormsModule] ComboboxField "${this.name}" requires a <select>`);
+      throw new Error(`[FormLayer] ComboboxField "${this.name}" requires a <select>`);
     }
     this.select = select;
 

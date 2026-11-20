@@ -94,7 +94,7 @@ describe('FormRegistry', () => {
   it('unregister() removes a form and calls destroy', () => {
     const registry = new FormRegistry();
     const form = createForm('contact');
-    const ctrl = registry.register(form, noopSubmit);
+    registry.register(form, noopSubmit);
 
     registry.unregister('contact');
     expect(registry.get('contact')).toBeUndefined();

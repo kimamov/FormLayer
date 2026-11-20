@@ -112,7 +112,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
       await import('altcha');
       await this.loadI18n();
     } catch (err) {
-      console.warn(`[FormsModule] AltchaField "${this.name}" failed to load altcha:`, err);
+      console.warn(`[FormLayer] AltchaField "${this.name}" failed to load altcha:`, err);
       return;
     }
 
@@ -126,7 +126,7 @@ export abstract class AltchaFieldBase extends AbstractDomFormField {
     const challenge = this.resolveChallenge();
     if (challenge === null || !this.isValidChallenge(challenge)) {
       console.warn(
-        `[FormsModule] AltchaField "${this.name}" has no challenge URL or JSON — `
+        `[FormLayer] AltchaField "${this.name}" has no challenge URL or JSON — `
         + 'ensure the TYPO3 partial renders `<altcha-widget challenge="...">` inside the '
         + '`[data-form-field]` wrapper, or set `data-altcha-challenge` on the wrapper/hidden input.',
       );
