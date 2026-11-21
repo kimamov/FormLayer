@@ -77,18 +77,26 @@ describe('FormRegistry', () => {
     expect(all.has('form2')).toBe(true);
   });
 
-  it('init() discovers forms with id attribute', () => {
+  it('init() enhances forms with fields, with or without an id, and skips forms without fields', () => {
     const registry = new FormRegistry();
     createForm('auto1');
     createForm('auto2');
 
-    // form without id should be skipped
+    // A form without an id is enhanced and gets a generated id.
     const noIdForm = document.createElement('form');
     noIdForm.innerHTML = '<div data-form-field="x"><input type="text"></div>';
     document.body.appendChild(noIdForm);
 
+    // A form without field wrappers (e.g. a search form) is left alone.
+    const searchForm = document.createElement('form');
+    searchForm.innerHTML = '<input type="search" name="q">';
+    document.body.appendChild(searchForm);
+
     registry.init({ submitFn: noopSubmit });
-    expect(registry.getAll().size).toBe(2);
+    expect(registry.getAll().size).toBe(3);
+    expect(registry.get(noIdForm)?.id).toMatch(/^formlayer-\d+$/);
+    expect(registry.get(searchForm)).toBeUndefined();
+    expect(searchForm.hasAttribute('novalidate')).toBe(false);
   });
 
   it('unregister() removes a form and calls destroy', () => {

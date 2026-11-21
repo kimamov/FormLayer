@@ -67,6 +67,11 @@ export interface FieldContext {
   commit(): void;
   /** The user left the field: marks it touched and validates if it was edited. */
   touch(): void;
+  /**
+   * Dispatch a bubbling `CustomEvent` from the field wrapper, e.g.
+   * `ctx.emit('rating:hover', { stars: 3 })`. Prefix names with your field type.
+   */
+  emit<T = unknown>(type: string, detail?: T): boolean;
 }
 
 /**
@@ -195,12 +200,13 @@ export abstract class BaseField implements DomFormField {
     else this.targets[0]?.focus();
   }
 
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
-    this.emitter.on(event, handler);
+  /** Subscribe to field events; returns a function that unsubscribes. */
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void {
+    return this.emitter.on(event, handler);
   }
 
-  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
-    this.emitter.once(event, handler);
+  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void {
+    return this.emitter.once(event, handler);
   }
 
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
@@ -449,6 +455,7 @@ export abstract class BaseField implements DomFormField {
       },
       controls,
       setControl: (element) => this.setControlTargets(element),
+      emit: (type, detail) => wrapper.dispatchEvent(new CustomEvent(type, { bubbles: true, detail })),
       input: () => this.handleInput(),
       commit: () => this.handleCommit(),
       touch: () => this.handleTouch(),

@@ -1,5 +1,6 @@
 import type { FormSubmitFunction } from '../forms/types';
-import type { Typo3AjaxFormResponse, Typo3FormsHooks, Typo3RemountFn, Typo3UnmountFn } from './types';
+import type { SubmissionResult } from '../forms/submission';
+import type { Typo3AjaxFormResponse, Typo3FormsHooks } from './types';
 
 function updateHiddenField(formEl: HTMLFormElement, selector: string, value: string): void {
   const input = formEl.querySelector<HTMLInputElement>(selector);
@@ -8,20 +9,40 @@ function updateHiddenField(formEl: HTMLFormElement, selector: string, value: str
   }
 }
 
-export interface Typo3SubmitDeps {
-  remount?: Typo3RemountFn;
-  unmount?: Typo3UnmountFn;
-}
-
 /** TYPO3 sets `data-ajax="1"` only when AJAX submission is enabled; all other values use native POST. */
 export function isTypo3AjaxSubmitEnabled(formEl: HTMLFormElement): boolean {
   const value = formEl.dataset.ajax;
   return value === '1' || value === 'true';
 }
 
-export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDeps): FormSubmitFunction {
+/**
+ * Split TYPO3 errors into field errors and form-level errors (`__form` or `""`).
+ * Keys may be identifiers or full names (`tx_form_formframework[form-1][email]`).
+ */
+export function typo3ErrorsToResult(errors: Record<string, string[]> | undefined): Pick<SubmissionResult, 'fields' | 'form'> {
+  const fields: Record<string, string[]> = {};
+  const form: string[] = [];
+  for (const [key, messages] of Object.entries(errors ?? {})) {
+    const list = Array.isArray(messages) ? messages : [];
+    if (key === '__form' || key === '') {
+      form.push(...list);
+      continue;
+    }
+    const name = key.match(/\[([^\]]+)\]$/)?.[1] ?? key;
+    (fields[name] ??= []).push(...list);
+  }
+  return { fields, form };
+}
+
+/**
+ * Submit function for TYPO3 EXT:form with the sitepackage's
+ * `AjaxFormSubmitMiddleware`. Maps the JSON response onto a
+ * `SubmissionResult` and lets the form apply it (errors, redirect,
+ * confirmation, or the next step's markup).
+ */
+export function createTypo3Submit(hooks?: Typo3FormsHooks): FormSubmitFunction {
   return async (ctx) => {
-    const { formEl, formData, signal, fallbackToNative, applyValidationErrors, redirect } = ctx;
+    const { formEl, formData, signal, fallbackToNative } = ctx;
 
     if (hooks?.onBeforeSubmit?.(ctx) === false) {
       return;
@@ -73,32 +94,28 @@ export function createTypo3Submit(hooks?: Typo3FormsHooks, deps?: Typo3SubmitDep
       if (data.state) {
         updateHiddenField(formEl, 'input[name$="[__state]"]', data.state);
       }
-      applyValidationErrors(data.errors);
+      ctx.applyResult({ ...typo3ErrorsToResult(data.errors), state: data.state });
       hooks?.onValidationError?.(data.errors, formEl);
       return;
     }
 
     if (data.finished) {
       hooks?.onFormFinished?.(data, formEl);
-      if (data.redirect) {
-        redirect(data.redirect);
-        return;
-      }
-      deps?.unmount?.(formEl);
-      if (data.message) {
-        formEl.outerHTML = data.message;
-      }
+      ctx.applyResult(data.redirect
+        ? { redirect: data.redirect }
+        : { finished: true, message: data.message, state: data.state });
       return;
     }
 
-    if (data.html && deps?.remount) {
-      const newFormEl = deps.remount(formEl, data.html);
+    if (data.html) {
+      const newFormEl = ctx.applyResult({ html: data.html, state: data.state });
       hooks?.onStepChange?.(data.page, newFormEl ?? formEl);
-    } else {
-      if (data.state) {
-        updateHiddenField(formEl, 'input[name$="[__state]"]', data.state);
-      }
-      hooks?.onStepChange?.(data.page, formEl);
+      return;
     }
+
+    if (data.state) {
+      updateHiddenField(formEl, 'input[name$="[__state]"]', data.state);
+    }
+    hooks?.onStepChange?.(data.page, formEl);
   };
 }

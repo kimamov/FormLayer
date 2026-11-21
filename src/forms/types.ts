@@ -94,8 +94,8 @@ export interface DomFormField extends FormField {
   setValue(value: FieldValue): void;
   /** Swap the active control; optional — only needed when the focus target changes. */
   replaceInput?(newInput: HTMLElement): void;
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
-  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void;
+  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void;
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void;
 }
 
@@ -179,26 +179,41 @@ export interface FormControllerApi {
   submit(): void;
   reset(): void;
   destroy(): void;
-  on(event: FieldEvents, handler: FieldEventHandler): void;
-  on(event: FormEvents, handler: FormLevelEventHandler): void;
-  once(event: FieldEvents, handler: FieldEventHandler): void;
-  once(event: FormEvents, handler: FormLevelEventHandler): void;
+  on(event: FieldEvents, handler: FieldEventHandler): () => void;
+  on(event: FormEvents, handler: FormLevelEventHandler): () => void;
+  once(event: FieldEvents, handler: FieldEventHandler): () => void;
+  once(event: FormEvents, handler: FormLevelEventHandler): () => void;
   off(event: FieldEvents, handler: FieldEventHandler): void;
   off(event: FormEvents, handler: FormLevelEventHandler): void;
 }
 
 export interface FormPlugin {
   init(formEl: HTMLFormElement, api: FormPluginHost): void | Promise<void>;
-  destroy(): void;
+  destroy?(): void;
+  /** On submit, before client validation. */
+  beforeValidate?(ctx: FormPluginSubmitContext): void | Promise<void>;
+  /** Adjust the data handed to the submit function: return new `FormData`, or modify it and return nothing. */
+  transformFormData?(formData: FormData, ctx: FormPluginSubmitContext): FormData | void | Promise<FormData | void>;
+  /** After the submit function finished. `result` is what it passed to `applyResult()`, if anything. */
+  afterSubmit?(ctx: FormPluginSubmitContext & { result: import('./submission').SubmissionResult | null }): void | Promise<void>;
 }
+
+export interface FormPluginSubmitContext {
+  formId: string;
+  formEl: HTMLFormElement;
+  submitter: HTMLElement | null;
+}
+
+/** A plugin class; it is constructed once per form with the options given at registration. */
+export type FormPluginClass<O = unknown> = new (options?: O) => FormPlugin;
 
 export interface FormPluginHost {
   readonly id: string;
   getFieldValue(name: string): string | undefined;
   getFieldNames(): string[];
   setFieldEnabled(name: string, enabled: boolean): void;
-  on(event: FieldEvents, handler: FieldEventHandler): void;
-  on(event: FormEvents, handler: FormLevelEventHandler): void;
+  on(event: FieldEvents, handler: FieldEventHandler): () => void;
+  on(event: FormEvents, handler: FormLevelEventHandler): () => void;
   off(event: FieldEvents, handler: FieldEventHandler): void;
   off(event: FormEvents, handler: FormLevelEventHandler): void;
 }
@@ -211,7 +226,11 @@ export interface ClientVariant {
 export type FieldControllerEventType = 'change' | 'valid' | 'invalid';
 export type FieldControllerEventHandler = (state: FieldState) => void;
 
-export type FormPluginFactory = () => Promise<{ default: new () => FormPlugin }>;
+/** A lazily loaded plugin module, e.g. `() => import('./my-plugin')`. */
+export type FormPluginFactory = () => Promise<{ default: FormPluginClass }>;
+
+/** What `registerFormPlugin()` accepts: a plugin class (attached immediately) or a lazy module. */
+export type FormPluginSource = FormPluginClass | FormPluginFactory;
 
 export const CSS_CLASSES = {
   errorClass: 'is-invalid',
@@ -239,12 +258,20 @@ export interface AjaxFormResponse {
 export interface FormSubmitActions {
   /** Allow the browser to submit the form natively (bypasses JS handling). */
   fallbackToNative(): void;
-  /** Apply server-side field validation errors and focus the first invalid field. */
-  applyValidationErrors(errors: Record<string, string[]>): void;
+  /**
+   * Apply a backend-independent submission result: errors, redirect,
+   * confirmation or the next form. Returns the form now in the page (the new
+   * one after a replace), or `null` when the form is gone.
+   */
+  applyResult(result: import('./submission').SubmissionResult): HTMLFormElement | null;
+  /** Show server errors (by field name, plus optional form-level errors) and focus the first problem. */
+  applyValidationErrors(errors: Record<string, string[]>, formErrors?: string[]): void;
   /** Navigate to a URL after successful submission. */
   redirect(url: string): void;
-  /** Replace the form element with the provided HTML after final submission. */
+  /** Replace the form with the provided HTML after final submission and move focus to it. */
   finish(html?: string): void;
+  /** Replace the form with new form markup (next step), enhance it and focus its heading. */
+  replace(html: string): HTMLFormElement | null;
 }
 
 export interface FormSubmitContext extends FormSubmitActions {
@@ -255,3 +282,60 @@ export interface FormSubmitContext extends FormSubmitActions {
 }
 
 export type FormSubmitFunction = (context: FormSubmitContext) => Promise<void>;
+
+// ---------------------------------------------------------------------------
+// DOM events
+// ---------------------------------------------------------------------------
+
+export interface BeforeSubmitDetail {
+  formId: string;
+  formEl: HTMLFormElement;
+  submitter: HTMLElement | null;
+  state: FormState;
+}
+
+export interface SubmitResultDetail {
+  formId: string;
+  formEl: HTMLFormElement;
+  result: import('./submission').SubmissionResult;
+}
+
+/**
+ * Bubbling `CustomEvent`s FormLayer dispatches. Field events start at the field
+ * wrapper, form events at the `<form>`. Listen on either, or on `document`.
+ */
+export interface FormLayerEventMap {
+  'formlayer:field-change': CustomEvent<FieldEventDetail>;
+  'formlayer:field-valid': CustomEvent<FieldEventDetail>;
+  'formlayer:field-invalid': CustomEvent<FieldEventDetail>;
+  'formlayer:field-added': CustomEvent<FieldEventDetail>;
+  'formlayer:field-removed': CustomEvent<FieldEventDetail>;
+  'formlayer:valid': CustomEvent<FormEventDetail>;
+  'formlayer:invalid': CustomEvent<FormEventDetail>;
+  'formlayer:submit': CustomEvent<FormEventDetail>;
+  'formlayer:loading': CustomEvent<FormEventDetail>;
+  'formlayer:reset': CustomEvent<FormEventDetail>;
+  /** Cancelable: `preventDefault()` stops the submit before validation. */
+  'formlayer:before-submit': CustomEvent<BeforeSubmitDetail>;
+  'formlayer:submit-result': CustomEvent<SubmitResultDetail>;
+  'formlayer:server-validation-error': CustomEvent<import('./server-validation').ServerValidationErrorDetail>;
+}
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface HTMLElementEventMap extends FormLayerEventMap {}
+}
+
+/** Bus event → DOM event name. */
+export const DOM_EVENT_NAMES: Record<FormEventType, keyof FormLayerEventMap> = {
+  'field:change': 'formlayer:field-change',
+  'field:valid': 'formlayer:field-valid',
+  'field:invalid': 'formlayer:field-invalid',
+  'field:added': 'formlayer:field-added',
+  'field:removed': 'formlayer:field-removed',
+  'form:valid': 'formlayer:valid',
+  'form:invalid': 'formlayer:invalid',
+  'form:submit': 'formlayer:submit',
+  'form:loading': 'formlayer:loading',
+  'form:reset': 'formlayer:reset',
+};

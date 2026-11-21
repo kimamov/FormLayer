@@ -32,7 +32,7 @@ export function lazy(loader: LazyFieldLoader): LazyFieldLoader {
 }
 
 /** True for `class` declarations and constructor functions with prototype methods. */
-function isClassLike(fn: Function): boolean {
+export function isClassLike(fn: Function): boolean {
   if (/^class[\s{]/.test(Function.prototype.toString.call(fn))) return true;
   const proto = (fn as { prototype?: object }).prototype;
   return !!proto && Object.getOwnPropertyNames(proto).length > 1;

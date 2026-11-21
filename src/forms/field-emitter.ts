@@ -7,21 +7,22 @@ import type {
 export class FieldEmitter {
   private listeners = new Map<FieldControllerEventType, Set<FieldControllerEventHandler>>();
 
-  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
+  on(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void {
     let set = this.listeners.get(event);
     if (!set) {
       set = new Set();
       this.listeners.set(event, set);
     }
     set.add(handler);
+    return () => this.off(event, handler);
   }
 
-  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
+  once(event: FieldControllerEventType, handler: FieldControllerEventHandler): () => void {
     const wrapper: FieldControllerEventHandler = (state) => {
       this.off(event, wrapper);
       handler(state);
     };
-    this.on(event, wrapper);
+    return this.on(event, wrapper);
   }
 
   off(event: FieldControllerEventType, handler: FieldControllerEventHandler): void {
