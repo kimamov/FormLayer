@@ -7,10 +7,9 @@ import type { ServerValidationOptions } from '../forms/server-validation';
 import type { Typo3FormsOptions, Typo3FormsApi } from './types';
 import type { FormSubmitFunction, RegistryEventHandler } from '../forms/types';
 
-export { createTypo3Submit, isTypo3AjaxSubmitEnabled } from './submit';
+export { createTypo3Submit, isTypo3AjaxSubmitEnabled, typo3ErrorsToResult } from './submit';
 export { createTypo3ServerValidation, normalizeTypo3ValidationResponse } from './server-validation';
 export type { Typo3ServerValidationOptions } from './server-validation';
-export type { Typo3SubmitDeps } from './submit';
 export type { Typo3FormsOptions, Typo3FormsHooks, Typo3AjaxFormResponse, Typo3FormsApi } from './types';
 
 let initialized = false;
@@ -48,25 +47,8 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
   };
   const hasControllerOptions = Object.keys(controllerOptions).length > 0;
 
-  const unmount = (formEl: HTMLFormElement): void => {
-    formRegistry.unregister(formEl.id);
-  };
 
-  const remount = (oldFormEl: HTMLFormElement, html: string): HTMLFormElement | null => {
-    const formId = oldFormEl.id;
-    formRegistry.unregister(formId);
-
-    oldFormEl.outerHTML = html;
-
-    const newFormEl = document.getElementById(formId) as HTMLFormElement | null;
-    if (newFormEl) {
-      formRegistry.register(newFormEl, submitFn, hasControllerOptions ? controllerOptions : undefined);
-    }
-    return newFormEl;
-  };
-
-  let submitFn: FormSubmitFunction;
-  submitFn = options?.onSubmit ?? createTypo3Submit(options?.hooks, { remount, unmount });
+  const submitFn: FormSubmitFunction = options?.onSubmit ?? createTypo3Submit(options?.hooks);
 
   let registeredHandler: RegistryEventHandler | null = null;
   if (options?.hooks?.onFormRegistered) {

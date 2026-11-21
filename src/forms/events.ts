@@ -11,21 +11,23 @@ type AnyEventType = FormEventType | RegistryEventType;
 export class EventBus {
   private listeners = new Map<AnyEventType, Set<AnyHandler>>();
 
-  on(event: AnyEventType, handler: AnyHandler): void {
+  /** Subscribe; returns a function that unsubscribes. */
+  on(event: AnyEventType, handler: AnyHandler): () => void {
     let set = this.listeners.get(event);
     if (!set) {
       set = new Set();
       this.listeners.set(event, set);
     }
     set.add(handler);
+    return () => this.off(event, handler);
   }
 
-  once(event: AnyEventType, handler: AnyHandler): void {
+  once(event: AnyEventType, handler: AnyHandler): () => void {
     const wrapper = ((...args: unknown[]) => {
       this.off(event, wrapper as AnyHandler);
       (handler as (...a: unknown[]) => void)(...args);
     }) as AnyHandler;
-    this.on(event, wrapper);
+    return this.on(event, wrapper);
   }
 
   off(event: AnyEventType, handler: AnyHandler): void {

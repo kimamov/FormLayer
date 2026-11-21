@@ -90,4 +90,13 @@ export type {
 } from './forms/types';
 
 export type { FieldControllerOptions } from './forms/field-controller';
+export type { SubmissionResult } from './forms/submission';
+export type {
+  FormLayerEventMap,
+  BeforeSubmitDetail,
+  SubmitResultDetail,
+  FormPluginClass,
+  FormPluginSource,
+  FormPluginSubmitContext,
+} from './forms/types';
 export type { FormControllerOptions } from './forms/form-controller';

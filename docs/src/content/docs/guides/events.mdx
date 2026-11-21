@@ -7,6 +7,40 @@ import FormPreview from '../../../components/FormPreview.astro';
 
 FormLayer provides a three-layer event system: **registry events** for form lifecycle, **form events** for field and form state changes, and **field events** for individual field changes.
 
+Every form and field event is also dispatched as a **DOM event**, so you can react without importing FormLayer, for example in a CMS template script.
+
+## DOM events
+
+Bubbling `CustomEvent`s with the same `detail` as the API events. Field events start at the field wrapper (`[data-form-field]`), form events at the `<form>`. Listen on the element, the form or `document`:
+
+```typescript
+document.addEventListener('formlayer:invalid', (event) => {
+  console.log('Form invalid:', event.detail.formId, event.detail.state.formErrors);
+});
+
+form.addEventListener('formlayer:field-change', (event) => {
+  console.log(event.detail.fieldName, event.detail.state.value);
+});
+
+// Cancel a submit before validation (e.g. ask for confirmation first)
+form.addEventListener('formlayer:before-submit', (event) => {
+  if (!confirm('Send now?')) event.preventDefault();
+});
+```
+
+| DOM event | Target | Detail |
+|-----------|--------|--------|
+| `formlayer:field-change`, `formlayer:field-valid`, `formlayer:field-invalid` | field wrapper | `FieldEventDetail` |
+| `formlayer:field-added`, `formlayer:field-removed` | field wrapper / form | `FieldEventDetail` |
+| `formlayer:valid`, `formlayer:invalid`, `formlayer:submit`, `formlayer:loading`, `formlayer:reset` | form | `FormEventDetail` |
+| `formlayer:before-submit` (cancelable) | form | `{ formId, formEl, submitter, state }` |
+| `formlayer:submit-result` | form | `{ formId, formEl, result }` (the `SubmissionResult`) |
+| `formlayer:server-validation-error` | form | `{ error, fields }` |
+
+In TypeScript the events are typed through `HTMLElementEventMap`, so `event.detail` is known.
+
+Custom fields can dispatch their own events with `ctx.emit('rating:hover', { stars })` (see [`defineField`](/reference/define-field/)).
+
 ## Form Events
 
 Subscribe to events on a form controller via `on()`, `once()`, and `off()`:
@@ -27,6 +61,14 @@ form.on('form:submit', (detail) => {
 form.once('form:valid', (detail) => {
   console.log('Form valid for the first time');
 });
+```
+
+`on()` and `once()` return a function that unsubscribes:
+
+```typescript
+const stop = form.on('field:change', handler);
+// later
+stop();
 ```
 
 ### Available Form Events

@@ -1,6 +1,6 @@
 ---
 title: Multistep Forms
-description: TYPO3 multistep form support with AJAX page transitions, summary steps, and form remounting.
+description: TYPO3 multistep form support with AJAX page transitions, summary steps, and form replacement.
 ---
 
 TYPO3 EXT:form supports multistep (multi-page) forms. The FormLayer TYPO3 layer handles step transitions via AJAX without full page reloads.
@@ -9,7 +9,7 @@ TYPO3 EXT:form supports multistep (multi-page) forms. The FormLayer TYPO3 layer 
 
 1. User submits step 1
 2. Server validates and returns `{ valid: true, finished: false, html: "...", state: "...", page: { current: 1, total: 3 } }`
-3. Frontend **remounts** the form: destroys the old controller, replaces `outerHTML` with the server HTML, registers a fresh controller
+3. Frontend **replaces** the form: `createTypo3Submit` calls `ctx.applyResult({ html })`, which destroys the old controller, swaps in the server HTML, enhances the new form with the same options and plugins, and moves focus to the new step's heading
 4. New fields are discovered; plugins (combobox, datepicker, client-variants) are re-initialized
 5. Hidden fields (`__state`, `__persistenceIdentifier`, `__currentPage`) come from the server-rendered HTML
 6. User continues to step 2, summary step, and so on
@@ -19,30 +19,29 @@ TYPO3 EXT:form supports multistep (multi-page) forms. The FormLayer TYPO3 layer 
 flowchart LR
     submit[User submits step] --> ajax[createTypo3Submit]
     ajax --> json[JSON response]
-    json -->|html present| remount[remount: unregister + outerHTML + register]
-    json -->|finished| unmount[unmount + replace with message]
+    json -->|html present| replace["applyResult({ html }): replace + enhance + focus heading"]
+    json -->|finished| finish["applyResult({ finished, message }): replace with message + focus it"]
     json -->|redirect| redirect[window.location]
-    remount --> nextStep[onStepChange hook]
+    replace --> nextStep[onStepChange hook]
 ```
 
-## Remount vs. Inner HTML Replacement
+## Replacing the whole form
 
-Step transitions replace the **entire form element** (`outerHTML`), not just inner content. This is necessary because the server renders a complete `<form>` via FluidFormRenderer.
+Step transitions replace the **entire form element**, not just its inner content, because the server renders a complete `<form>` via FluidFormRenderer. `ctx.applyResult({ html })` (or `ctx.replace(html)`):
 
-The `remount` function in `initTypo3Forms()`:
+1. destroys the old controller, its plugins and fields (the registry unregisters it);
+2. swaps the new markup into the page;
+3. registers the new `<form>` with the same submit function, options and plugins;
+4. moves focus to the new step's heading (`[data-fl-step-heading]`, else the first `h1`–`h6`), so keyboard and screen-reader users land on the new step. Give the heading `tabindex="-1"` in the template, or FormLayer adds it.
 
-1. `formRegistry.unregister(formId)` — destroys controller, plugins, and fields
-2. `oldFormEl.outerHTML = html` — replaces DOM
-3. `formRegistry.register(newFormEl, submitFn)` — fresh controller on the new element
-
-This ensures clean lifecycle management and avoids nested `<form>` elements.
+This keeps lifecycles clean and avoids nested `<form>` elements. `hooks.onStepChange(page, newFormEl)` receives the new form.
 
 ## Summary Steps
 
 A summary step is a form page with no input fields — only review content and navigation. It works the same as any other step:
 
 - Server renders the summary page via `FormRuntime::render()` and returns it as `html`
-- Frontend remounts the form; the new controller has zero `[data-form-field]` elements
+- Frontend replaces the form; the new controller has zero `[data-form-field]` elements
 - Submit still works: client validation passes (no fields), the request goes to the server
 - User clicks Submit on the summary → finishers run → `finished: true`
 

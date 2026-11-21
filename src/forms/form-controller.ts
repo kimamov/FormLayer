@@ -13,7 +13,7 @@ import type {
   FormLoadingStateOptions,
   FormField,
 } from './types';
-import { SELECTORS } from './types';
+import { SELECTORS, DOM_EVENT_NAMES } from './types';
 import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
 import { createField, createFieldAsync, isLazyFactory, type AddFieldFromElementOptions, type CustomFieldsMap } from './create-field';
@@ -24,11 +24,22 @@ import { getValidator } from './validators/index';
 import { escapeHtml } from './html';
 import type { FieldFormContext, FieldValidationResult, Validator, ValidatorRule } from './types';
 import {
+  type SubmissionResult,
+  hasErrors,
+  parseHtml,
+  focusElement,
+  findConfirmation,
+  findStepFocusTarget,
+  focusWasIn,
+} from './submission';
+import {
   ServerValidationScheduler,
   resolveServerValidationMode,
   type ServerValidationMode,
   type ServerValidationOptions,
 } from './server-validation';
+
+let autoId = 0;
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -46,6 +57,11 @@ export interface FormControllerOptions {
    * Complements the `form:invalid` event for imperative UI such as a summary banner.
    */
   onFormInvalid?: (detail: FormEventDetail) => void;
+  /**
+   * Render form-level errors yourself. Default: one `<p>` per message inside
+   * `[data-fl-form-errors]` in the form.
+   */
+  renderFormErrors?: (errors: string[], formEl: HTMLFormElement) => void;
 
   fieldsMap?: CustomFieldsMap;
   /** Validators for this form only, looked up before the global registry. */
@@ -72,6 +88,8 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private readonly observer: MutationObserver;
   private readonly abortController = new AbortController();
   private readonly submitFn: FormSubmitFunction;
+  private readonly options?: FormControllerOptions;
+  private replaceHandler: ((formEl: HTMLFormElement) => FormControllerApi) | null = null;
   private readonly fieldOptions?: FieldControllerOptions;
   private readonly loadingStateOptions: false | FormLoadingStateOptions;
   private readonly onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
@@ -96,8 +114,9 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
   constructor(formEl: HTMLFormElement, submitFn: FormSubmitFunction, options?: FormControllerOptions) {
     this.formEl = formEl;
-    this.id = formEl.id;
+    this.id = formEl.id || `formlayer-${++autoId}`;
     this.submitFn = submitFn;
+    this.options = options;
     this.fieldSelector = options?.fieldSelector ?? SELECTORS.formField;
     this.fieldOptions = {
       ...options?.fieldOptions,
@@ -200,7 +219,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     if (!isValid) {
       this.onFormInvalid?.(detail);
     }
-    this.eventBus.emit(isValid ? 'form:valid' : 'form:invalid', detail);
+    this.emit(isValid ? 'form:valid' : 'form:invalid', detail);
 
     if (firstInvalid) {
       firstInvalid.focus();
@@ -215,7 +234,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     for (const ctrl of this.fields.values()) {
       ctrl.reset();
     }
-    this.eventBus.emit('form:reset', { formId: this.id, state: this.getState() });
+    this.emit('form:reset', { formId: this.id, state: this.getState() });
   }
 
   destroy(): void {
@@ -228,7 +247,11 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.serverScheduler?.cancel();
     this.observer.disconnect();
     for (const plugin of this.formPlugins) {
-      plugin.destroy();
+      try {
+        plugin.destroy?.();
+      } catch (err) {
+        console.error('[FormLayer] Error destroying form plugin:', err);
+      }
     }
     this.formPlugins.length = 0;
     for (const ctrl of this.fields.values()) {
@@ -249,12 +272,29 @@ export class FormController implements FormControllerApi, FormPluginHost {
     this.formEl.requestSubmit();
   }
 
-  on(event: FormEventType, handler: FormEventHandler): void {
-    this.eventBus.on(event, handler);
+  /**
+   * Emit on the internal bus and dispatch the matching bubbling `formlayer:*`
+   * DOM event: field events on the field wrapper (or the form, once the
+   * wrapper is gone), form events on the form.
+   */
+  private emit(type: FormEventType, detail: FieldEventDetail | FormEventDetail): void {
+    this.eventBus.emit(type, detail);
+    if (this._destroyed) return;
+    let target: Element = this.formEl;
+    if ('fieldName' in detail) {
+      const wrapper = (this.fields.get(detail.fieldName) as { element?: HTMLElement } | undefined)?.element;
+      if (wrapper?.isConnected && this.formEl.contains(wrapper)) target = wrapper;
+    }
+    target.dispatchEvent(new CustomEvent(DOM_EVENT_NAMES[type], { bubbles: true, detail }));
   }
 
-  once(event: FormEventType, handler: FormEventHandler): void {
-    this.eventBus.once(event, handler);
+  /** Subscribe to form events; returns a function that unsubscribes. */
+  on(event: FormEventType, handler: FormEventHandler): () => void {
+    return this.eventBus.on(event, handler);
+  }
+
+  once(event: FormEventType, handler: FormEventHandler): () => void {
+    return this.eventBus.once(event, handler);
   }
 
   off(event: FormEventType, handler: FormEventHandler): void {
@@ -318,7 +358,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
     field.destroy();
     this.fields.delete(name);
-    this.eventBus.emit('field:removed', detail);
+    this.emit('field:removed', detail);
   }
 
 
@@ -378,7 +418,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
       fieldName: name,
       state: field.getState(),
     };
-    this.eventBus.emit('field:added', detail);
+    this.emit('field:added', detail);
   }
 
   private handleFieldChange(state: FieldState): void {
@@ -408,8 +448,8 @@ export class FormController implements FormControllerApi, FormPluginHost {
       fieldName: state.name,
       state,
     };
-    this.eventBus.emit('field:change', detail);
-    this.eventBus.emit(eventType, detail);
+    this.emit('field:change', detail);
+    this.emit(eventType, detail);
   }
 
   /** Run `data-validate-form` rules and render their errors into `[data-fl-form-errors]`. */
@@ -472,9 +512,18 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   private renderFormErrors(): void {
+    if (this.options?.renderFormErrors) {
+      this.options.renderFormErrors(this.formErrors, this.formEl);
+      return;
+    }
     const container = this.formErrorsElement();
     if (!container) return;
     container.innerHTML = this.formErrors.map((message) => `<p>${escapeHtml(message)}</p>`).join('');
+  }
+
+  /** Set by the registry: how a form swapped in by `replace()` gets enhanced. */
+  setReplaceHandler(handler: (formEl: HTMLFormElement) => FormControllerApi): void {
+    this.replaceHandler = handler;
   }
 
   private parseFormRules(): ValidatorRule[] {
@@ -532,43 +581,67 @@ export class FormController implements FormControllerApi, FormPluginHost {
         const submitter = (e as SubmitEvent).submitter instanceof HTMLElement
           ? (e as SubmitEvent).submitter
           : null;
+
+        const proceed = this.formEl.dispatchEvent(new CustomEvent('formlayer:before-submit', {
+          bubbles: true,
+          cancelable: true,
+          detail: { formId: this.id, formEl: this.formEl, submitter, state: this.getState() },
+        }));
+        if (!proceed) return;
+
         // `formnovalidate` on the submitter (e.g. a multistep "Back" button) skips client validation.
         const skipValidation = !!submitter && (submitter as HTMLButtonElement | HTMLInputElement).formNoValidate === true;
+        const pluginCtx = { formId: this.id, formEl: this.formEl, submitter };
         this.setSubmitting(true, submitter);
-        this.eventBus.emit('form:submit', { formId: this.id, state: this.getState() });
+        this.emit('form:submit', { formId: this.id, state: this.getState() });
 
         try {
           await this.ready;
           // Server checks in flight are superseded by the submit, which the server validates anyway.
           this.serverScheduler?.cancel();
+          this.serverFormErrors = [];
+          this.renderFormErrors();
+
+          await this.runPluginHook('beforeValidate', (plugin) => plugin.beforeValidate?.(pluginCtx));
+
           // In `server` mode there are no client rules: the submit response reports the errors.
           const isValid = skipValidation || this.serverMode === 'server' || await this.validate();
+          if (!isValid) return;
 
-          if (isValid) {
-            const formData = new FormData(this.formEl, submitter ?? undefined);
-            await this.submitFn({
-              formEl: this.formEl,
-              formData,
-              submitter,
-              signal: this.abortController.signal,
-              fallbackToNative: () => {
-                this._allowSubmit = true;
-                this.formEl.requestSubmit();
-              },
-              applyValidationErrors: (errors) => {
-                this.applyServerErrors(errors);
-              },
-              redirect: (url) => {
-                window.location.href = url;
-              },
-              finish: (html) => {
-                this.destroy();
-                if (html) {
-                  this.formEl.outerHTML = html;
-                }
-              },
-            });
+          let formData = new FormData(this.formEl, submitter ?? undefined);
+          for (const plugin of this.formPlugins) {
+            try {
+              formData = (await plugin.transformFormData?.(formData, pluginCtx)) ?? formData;
+            } catch (err) {
+              console.error('[FormLayer] Form plugin transformFormData failed:', err);
+            }
           }
+
+          let lastResult: SubmissionResult | null = null;
+          await this.submitFn({
+            formEl: this.formEl,
+            formData,
+            submitter,
+            signal: this.abortController.signal,
+            fallbackToNative: () => {
+              this._allowSubmit = true;
+              this.formEl.requestSubmit();
+            },
+            applyResult: (result) => {
+              lastResult = result;
+              return this.applyResult(result);
+            },
+            applyValidationErrors: (errors, formErrors) => {
+              this.applyServerErrors(errors, formErrors);
+            },
+            redirect: (url) => {
+              window.location.href = url;
+            },
+            finish: (html) => this.finish(html),
+            replace: (html) => this.replaceForm(html),
+          });
+
+          await this.runPluginHook('afterSubmit', (plugin) => plugin.afterSubmit?.({ ...pluginCtx, result: lastResult }));
         } finally {
           this.setSubmitting(false, submitter);
         }
@@ -577,22 +650,94 @@ export class FormController implements FormControllerApi, FormPluginHost {
     );
   }
 
-  private applyServerErrors(errors: Record<string, string[]>): void {
+  private async runPluginHook(name: string, call: (plugin: FormPlugin) => unknown): Promise<void> {
+    for (const plugin of this.formPlugins) {
+      try {
+        await call(plugin);
+      } catch (err) {
+        console.error(`[FormLayer] Form plugin ${name} failed:`, err);
+      }
+    }
+  }
+
+  /** See {@link FormSubmitActions.applyResult}. */
+  private applyResult(result: SubmissionResult): HTMLFormElement | null {
+    this.formEl.dispatchEvent(new CustomEvent('formlayer:submit-result', {
+      bubbles: true,
+      detail: { formId: this.id, formEl: this.formEl, result },
+    }));
+
+    if (hasErrors(result)) {
+      this.applyServerErrors(result.fields ?? {}, result.form ?? []);
+      return this.formEl;
+    }
+    if (result.redirect) {
+      window.location.href = result.redirect;
+      return null;
+    }
+    if (result.finished) {
+      this.finish(result.message ?? undefined);
+      return null;
+    }
+    if (result.html) {
+      return this.replaceForm(result.html);
+    }
+    return this.formEl;
+  }
+
+  /** Destroy the controller and replace the form with the confirmation markup, moving focus to it. */
+  private finish(html?: string): void {
+    const moveFocus = focusWasIn(this.formEl);
+    this.destroy();
+    if (!html) return;
+    const nodes = parseHtml(html);
+    this.formEl.replaceWith(...nodes);
+    if (moveFocus) focusElement(findConfirmation(nodes));
+  }
+
+  /**
+   * Replace the form with new form markup (the next step of a multistep form),
+   * enhance the new form with the same options, and move focus to its heading.
+   */
+  private replaceForm(html: string): HTMLFormElement | null {
+    const moveFocus = focusWasIn(this.formEl);
+    const nodes = parseHtml(html);
+    const newForm = nodes.find((n): n is HTMLFormElement => n instanceof HTMLFormElement)
+      ?? nodes.map((n) => (n instanceof Element ? n.querySelector('form') : null)).find(Boolean) ?? null;
+
+    this.destroy();
+    this.formEl.replaceWith(...nodes);
+    if (!newForm) return null;
+
+    if (this.replaceHandler) {
+      this.replaceHandler(newForm);
+    } else {
+      new FormController(newForm, this.submitFn, this.options);
+    }
+    if (moveFocus) focusElement(findStepFocusTarget(newForm));
+    return newForm;
+  }
+
+  private applyServerErrors(errors: Record<string, string[]>, formErrors: string[] = []): void {
     for (const [fieldName, messages] of Object.entries(errors)) {
       const ctrl = this.fields.get(fieldName);
       if (ctrl) {
         ctrl.setServerErrors(messages);
       }
     }
+    this.serverFormErrors = formErrors;
+    this.renderFormErrors();
 
     const firstInvalidField = [...this.fields.values()].find((c) => !c.getState().isValid);
     if (firstInvalidField) {
       firstInvalidField.focus();
+    } else if (formErrors.length > 0) {
+      this.formErrorsElement()?.focus();
     }
 
     const detail: FormEventDetail = { formId: this.id, state: this.getState() };
     this.onFormInvalid?.(detail);
-    this.eventBus.emit('form:invalid', detail);
+    this.emit('form:invalid', detail);
   }
 
   private applyDefaultLoadingState(submitter: HTMLElement | null, isSubmitting: boolean): void {
@@ -640,7 +785,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     };
 
     this.onLoadingStateChange?.(detail);
-    this.eventBus.emit('form:loading', { formId: this.id, state: detail.state });
+    this.emit('form:loading', { formId: this.id, state: detail.state });
   }
 
   private computeIsValid(): boolean {
