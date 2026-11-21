@@ -1,20 +1,13 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const emailAddress: Validator = {
+export const emailAddress = defineValidator({
   type: 'EmailAddress',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  validate(input) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const valid = EMAIL_RE.test(value);
-    return {
-      valid,
-      message: valid ? '' : (options.message as string) ?? 'Please enter a valid email address.',
-    };
+    if (value.length === 0 || EMAIL_RE.test(value)) return VALID;
+    return invalid('EmailAddress', 'Please enter a valid email address.');
   },
-};
+});

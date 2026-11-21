@@ -1,34 +1,23 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const regularExpression: Validator = {
+export const regularExpression = defineValidator({
   type: 'RegularExpression',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  options: { regularExpression: String },
+  validate(input, { regularExpression }) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const pattern = String(options['regularExpression'] ?? '');
-    if (!pattern) {
-      return { valid: true, message: '' };
-    }
+    if (value.length === 0 || !regularExpression) return VALID;
 
     // TYPO3 stores patterns as PCRE delimited strings, e.g. '/^[a-z]+$/i'
-    const match = pattern.match(/^\/(.+)\/([gimsuy]*)$/);
-    if (!match) {
-      return { valid: true, message: '' };
-    }
+    const match = regularExpression.match(/^\/(.+)\/([gimsuy]*)$/);
+    if (!match) return VALID;
 
     try {
-      const re = new RegExp(match[1], match[2]);
-      const valid = re.test(value);
-      return {
-        valid,
-        message: valid ? '' : (options.message as string) ?? 'The value does not match the expected format.',
-      };
+      return new RegExp(match[1], match[2]).test(value)
+        ? VALID
+        : invalid('RegularExpression', 'The value does not match the expected format.');
     } catch {
-      return { valid: true, message: '' };
+      return VALID;
     }
   },
-};
+});

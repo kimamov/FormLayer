@@ -5,11 +5,18 @@ export type { FieldValue } from './field-value';
 export interface ValidatorRule {
   type: string;
   options?: Record<string, unknown>;
+  /** Only validated on the server: skipped on the client (and checked by server validation, if enabled). */
+  server?: boolean;
 }
 
 export interface ValidatorResult {
   valid: boolean;
-  message: string;
+  /** The message to show (English default for built-ins). */
+  message?: string;
+  /** Translation key, looked up in `messages` (e.g. `"StringLength.tooShort"`). */
+  key?: string;
+  /** Values for `{placeholders}` in translated messages. */
+  params?: Record<string, unknown>;
 }
 
 export interface Validator {
@@ -19,7 +26,11 @@ export interface Validator {
    * multi-selects) or `File[]` (file inputs). Validators written for strings
    * can convert with `valueToString()`.
    */
-  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult | Promise<ValidatorResult>;
+  validate(
+    value: FieldValue,
+    options: Record<string, unknown>,
+    ctx: import('./validation').ValidatorContext,
+  ): ValidatorResult | Promise<ValidatorResult>;
 }
 
 export interface FieldState {
@@ -29,6 +40,8 @@ export interface FieldState {
   isDirty: boolean;
   isTouched: boolean;
   errors: string[];
+  /** An async validator is still running. */
+  isValidating: boolean;
 }
 
 export interface FieldValidationResult {
@@ -40,15 +53,25 @@ export interface FieldValidationResult {
 export interface FormField {
   readonly name: string;
   getState(): FieldState;
-  validate(): FieldValidationResult;
+  /** Run the field's rules. Async rules make this resolve later; sync-only fields resolve at once. */
+  validate(): FieldValidationResult | Promise<FieldValidationResult>;
   reset(): void;
   destroy(): void;
   setEnabled(enabled: boolean): void;
   setServerErrors(errors: string[]): void;
-  /** Wire field state changes into the parent form (no-op for standalone use). */
-  connect(onChange: (state: FieldState) => void): void;
+  /**
+   * Wire field state changes into the parent form (no-op for standalone use).
+   * `form` gives validators access to other fields' values.
+   */
+  connect(onChange: (state: FieldState) => void, form?: FieldFormContext): void;
   focus(): void;
-  /** optional fields that can be usefull */
+  /** Names of fields this field's rules depend on (`options.field` / `options.fields`). */
+  readonly dependencies?: readonly string[];
+}
+
+/** What a form shares with its fields. */
+export interface FieldFormContext {
+  getValue(name: string): FieldValue | undefined;
 }
 
 /**
@@ -83,6 +106,10 @@ export interface FormState {
   isValid: boolean;
   isSubmitting: boolean;
   isDirty: boolean;
+  /** Some field is waiting for an async validator. */
+  isValidating: boolean;
+  /** Errors from form-level rules (`data-validate-form`). */
+  formErrors: string[];
   fields: Record<string, FieldState>;
 }
 

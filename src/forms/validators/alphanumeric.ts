@@ -1,18 +1,11 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const alphanumeric: Validator = {
+export const alphanumeric = defineValidator({
   type: 'Alphanumeric',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  validate(input) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const valid = /^[\p{L}\p{N}]*$/u.test(value);
-    return {
-      valid,
-      message: valid ? '' : (options.message as string) ?? 'Only letters and numbers are allowed.',
-    };
+    if (value.length === 0 || /^[\p{L}\p{N}]*$/u.test(value)) return VALID;
+    return invalid('Alphanumeric', 'Only letters and numbers are allowed.');
   },
-};
+});

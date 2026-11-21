@@ -1,33 +1,14 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const stringLength: Validator = {
+export const stringLength = defineValidator({
   type: 'StringLength',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const value = valueToString(input);
-    const min = Number(options['minimum'] ?? 0);
-    const max = Number(options['maximum'] ?? Infinity);
-    const customMsg = options.message as string | undefined;
-    const len = value.length;
-
-    if (len === 0) {
-      return { valid: true, message: '' };
-    }
-
-    if (len < min) {
-      return {
-        valid: false,
-        message: customMsg ?? `Must be at least ${min} characters.`,
-      };
-    }
-
-    if (len > max) {
-      return {
-        valid: false,
-        message: customMsg ?? `Must be at most ${max} characters.`,
-      };
-    }
-
-    return { valid: true, message: '' };
+  options: { minimum: Number, maximum: Number },
+  validate(input, { minimum = 0, maximum = Infinity }) {
+    const len = valueToString(input).length;
+    if (len === 0) return VALID;
+    if (len < minimum) return invalid('StringLength.tooShort', `Must be at least ${minimum} characters.`, { minimum, maximum });
+    if (len > maximum) return invalid('StringLength.tooLong', `Must be at most ${maximum} characters.`, { minimum, maximum });
+    return VALID;
   },
-};
+});

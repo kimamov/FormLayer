@@ -1,49 +1,31 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { isFileValue } from '../field-value';
 
-const SIZE_UNITS: Record<string, number> = {
-  B: 1,
-  K: 1024,
-  M: 1024 * 1024,
-  G: 1024 * 1024 * 1024,
-};
+const SIZE_UNITS: Record<string, number> = { B: 1, K: 1024, M: 1024 ** 2, G: 1024 ** 3 };
 
 function parseSize(input: string): number {
   const match = input.trim().toUpperCase().match(/^(\d+(?:\.\d+)?)\s*([BKMG])?$/);
   if (!match) return 0;
-  const value = parseFloat(match[1]);
-  const unit = match[2] ?? 'B';
-  return value * (SIZE_UNITS[unit] ?? 1);
+  return parseFloat(match[1]) * (SIZE_UNITS[match[2] ?? 'B'] ?? 1);
 }
 
-/**
- * Client-side file size validation reads from the File API.
- * Reads the files from the field value (`File[]`), or from `options.__files` for custom fields.
- */
-export const fileSize: Validator = {
+/** TYPO3 `FileSize`: every selected file must be within `minimum`/`maximum` (e.g. `"5M"`). */
+export const fileSize = defineValidator({
   type: 'FileSize',
-  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const files = isFileValue(value) ? value : (options['__files'] as ArrayLike<File> | undefined);
-    if (!files || files.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const customMsg = options.message as string | undefined;
-    const minStr = String(options['minimum'] ?? '0B');
-    const maxStr = String(options['maximum'] ?? '');
-    const min = parseSize(minStr);
-    const max = maxStr ? parseSize(maxStr) : Infinity;
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+  options: { minimum: String, maximum: String },
+  validate(value, { minimum = '0B', maximum }, ctx) {
+    const files = isFileValue(value) ? value : ctx.files;
+    if (files.length === 0) return VALID;
+    const min = parseSize(minimum);
+    const max = maximum ? parseSize(maximum) : Infinity;
+    for (const file of files) {
       if (file.size < min) {
-        return { valid: false, message: customMsg ?? `File "${file.name}" is too small. Minimum: ${minStr}.` };
+        return invalid('FileSize.tooSmall', `File "${file.name}" is too small. Minimum: ${minimum}.`, { fileName: file.name, minimum, maximum });
       }
       if (file.size > max) {
-        return { valid: false, message: customMsg ?? `File "${file.name}" is too large. Maximum: ${maxStr}.` };
+        return invalid('FileSize.tooLarge', `File "${file.name}" is too large. Maximum: ${maximum}.`, { fileName: file.name, minimum, maximum });
       }
     }
-
-    return { valid: true, message: '' };
+    return VALID;
   },
-};
+});

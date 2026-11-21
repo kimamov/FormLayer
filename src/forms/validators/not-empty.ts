@@ -1,13 +1,9 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { isEmptyValue } from '../field-value';
 
-export const notEmpty: Validator = {
+export const notEmpty = defineValidator({
   type: 'NotEmpty',
-  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const valid = !isEmptyValue(value);
-    return {
-      valid,
-      message: valid ? '' : (options.message as string) ?? 'This field is required.',
-    };
+  validate(value) {
+    return isEmptyValue(value) ? invalid('NotEmpty', 'This field is required.') : VALID;
   },
-};
+});

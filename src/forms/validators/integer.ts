@@ -1,18 +1,11 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const integer: Validator = {
+export const integer = defineValidator({
   type: 'Integer',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  validate(input) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const valid = /^-?\d+$/.test(value.trim());
-    return {
-      valid,
-      message: valid ? '' : (options.message as string) ?? 'Please enter a whole number.',
-    };
+    if (value.length === 0 || /^-?\d+$/.test(value.trim())) return VALID;
+    return invalid('Integer', 'Please enter a whole number.');
   },
-};
+});
