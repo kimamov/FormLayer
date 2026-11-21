@@ -24,6 +24,8 @@ interface FormControllerOptions {
   validators?: Validator[];
   /** Translations for validator message keys in this form. */
   messages?: ValidationMessages;
+  /** Opt-in server validation while filling in the form (see the Server Validation guide). */
+  serverValidation?: ServerValidationOptions;
 }
 
 interface FormLoadingStateOptions {

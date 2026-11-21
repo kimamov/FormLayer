@@ -211,6 +211,16 @@ const scenarios = [
           return { pass, note: pass ? '' : `only first radio: ${JSON.stringify(r.first)}` };
         },
       },
+      {
+        id: 'C12', roadmap: '04',
+        title: 'With `data-server-validation="client+server"`, the server-only rule is checked when leaving the field',
+        async run(page) {
+          await page.fill('#email', 'taken@example.com');
+          await page.keyboard.press('Tab');
+          const shown = await waitForText(page, '#email-errors', 'already registered', 3000);
+          return { pass: shown, note: shown ? '' : 'no server check before submit' };
+        },
+      },
     ],
   },
   {
@@ -520,6 +530,32 @@ const scenarios = [
           await page.selectOption('#trip-destination', 'atlantis');
           await submit(page);
           return { pass: await waitForText(page, '#trip-destination-errors', 'fully booked') };
+        },
+      },
+    ],
+  },
+  {
+    name: '08 · Server mode',
+    path: '/scenarios/08-server-mode.html',
+    checks: [
+      {
+        id: 'S1', roadmap: '04',
+        title: '`data-server-validation="server"`: leaving a field shows the server’s error, not the client rule',
+        async run(page) {
+          await page.fill('#username', 'admin');
+          await page.keyboard.press('Tab');
+          const shown = await waitForText(page, '#username-errors', 'Server: this username is taken', 3000);
+          return { pass: shown, note: shown ? '' : `errors: ${JSON.stringify(await text(page, '#username-errors'))}` };
+        },
+      },
+      {
+        id: 'S2', roadmap: '04',
+        title: '`server` mode: submitting skips client validation and shows the server’s errors',
+        async run(page) {
+          await submit(page);
+          const shown = await waitForText(page, '#display-name-errors', 'Server: enter a display name', 3000);
+          const client = (await text(page, '#username-errors')).includes('Client:');
+          return { pass: shown && !client, note: client ? 'client rules ran' : shown ? '' : 'no server errors' };
         },
       },
     ],

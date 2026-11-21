@@ -8,9 +8,11 @@ import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
 import 'formlayer/forms.css';
 import './playground.css';
 import { mountDebugPanel } from './debug-panel';
+import { playgroundServerValidation } from './integrator/server-validation';
 
 registerComboboxPlugin();
 registerClientVariantsPlugin();
 
-const { registry } = initTypo3Forms();
+// Forms opt in with data-server-validation="client+server" or "server".
+const { registry } = initTypo3Forms({ serverValidation: playgroundServerValidation });
 mountDebugPanel(registry);

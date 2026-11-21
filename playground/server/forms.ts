@@ -339,6 +339,18 @@ const widgets = simple((v, c) => {
   c.required(v, 'country', 'Choose a country.');
 }, 'Profile saved.');
 
+// ---------------------------------------------------------------------------
+// 08 · server mode (all validation on the server)
+// ---------------------------------------------------------------------------
+
+const serverMode = simple((v, c) => {
+  if (c.required(v, 'username', 'Server: choose a username.')) {
+    if (v.username.length < 3) c.add('username', 'Server: use at least 3 characters.');
+    else if (v.username.toLowerCase() === 'admin') c.add('username', 'Server: this username is taken.');
+  }
+  c.required(v, 'displayName', 'Server: enter a display name.');
+}, 'Account created.');
+
 export const forms: Record<string, FormDefinition> = {
   contact,
   address,
@@ -347,4 +359,5 @@ export const forms: Record<string, FormDefinition> = {
   'cross-field': crossField,
   trip,
   widgets,
+  'server-mode': serverMode,
 };

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server mode · FormLayer playground</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+<main>
+  <p><a href="/">All scenarios</a></p>
+  <h1 id="signup-title">Choose a username</h1>
+
+  <aside class="scenario-notes">
+    <p><strong>Exercises:</strong> <code>data-server-validation="server"</code>. The client rules in <code>data-validate</code> are skipped; every field is checked by the mock server when you leave it, and the submit goes straight to the server. Client messages start with "Client:" so you can tell them apart.</p>
+    <p><strong>Try:</strong> <code>admin</code> is taken; fewer than 3 characters is too short.</p>
+  </aside>
+
+  <form id="server-mode" action="/api/forms/server-mode" method="post" data-ajax="1" data-server-validation="server" aria-labelledby="signup-title">
+    <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+
+    <div class="field" data-form-field="username"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Client: required"}}]'>
+      <label for="username">Username <span aria-hidden="true">*</span></label>
+      <input id="username" name="username" type="text" autocomplete="username" required
+             autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="username-hint">
+      <p id="username-hint" class="hint">At least 3 characters.</p>
+      <p id="username-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="field" data-form-field="displayName"
+         data-validate='[{"type":"NotEmpty","options":{"message":"Client: required"}}]'>
+      <label for="display-name">Display name <span aria-hidden="true">*</span></label>
+      <input id="display-name" name="displayName" type="text" autocomplete="nickname" required>
+      <p id="display-name-errors" class="invalid-feedback"></p>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Create account</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>

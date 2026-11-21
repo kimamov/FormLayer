@@ -18,6 +18,7 @@ npm run playground:check   # runs all scenarios in Chromium → CAPABILITIES.md
   - Without either header it returns an HTML page (the no-JS fallback).
 
   Every form's rules are re-implemented server-side in `server/forms.ts`, including server-only rules and form-level errors (`__form`). The multistep form is rendered entirely by the server.
+- **Server validation**: `src/integrator/server-validation.ts` is a small fetch transport (until the TYPO3 adapter ships one). `01-contact` uses `client+server` mode, `08-server-mode` uses `server` mode.
 - **Integrator code** (`src/integrator/`) is what an integrator has to write today for things the library doesn't cover. Its size is tracked as a finding. The goal is to shrink it to nothing.
 - **Debug panel**: every page has a collapsible "FormLayer events" log at the bottom.
 
@@ -32,6 +33,7 @@ npm run playground:check   # runs all scenarios in Chromium → CAPABILITIES.md
 | `05-cross-field` | Password confirmation, date range, re-validating dependent fields, form-level "phone or backup email" rule |
 | `06-multistep` | Steps rendered by the server, focus on step change, `formnovalidate` Back button, server errors on step 2 |
 | `07-widgets` | Checkbox group with `Count`, combobox with `<optgroup>` and a server-rendered flag listbox, file upload with `FileSize`/`MimeType` |
+| `08-server-mode` | `data-server-validation="server"`: client rules skipped, every field checked by the mock server, submit straight to the server |
 
 ## Markup conventions
 

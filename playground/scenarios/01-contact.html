@@ -13,10 +13,10 @@
 
   <aside class="scenario-notes">
     <p><strong>Exercises:</strong> validation timing, required fields, a radio group, a consent checkbox, focus after a failed submit, a server-only rule, a form-level server error, and the success message.</p>
-    <p><strong>Try:</strong> email <code>taken@example.com</code> (server-only error). A message containing <code>spam</code> gives a form-level error.</p>
+    <p><strong>Try:</strong> email <code>taken@example.com</code>: with <code>data-server-validation="client+server"</code> the server-only rule is checked when you leave the field. A message containing <code>spam</code> gives a form-level error on submit.</p>
   </aside>
 
-  <form id="contact" action="/api/forms/contact" method="post" data-ajax="1" aria-labelledby="contact-title">
+  <form id="contact" action="/api/forms/contact" method="post" data-ajax="1" data-server-validation="client+server" aria-labelledby="contact-title">
     <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
 
     <div class="field" data-form-field="name"
