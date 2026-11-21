@@ -18,7 +18,7 @@ npm run playground:check   # runs all scenarios in Chromium → CAPABILITIES.md
   - Without either header it returns an HTML page (the no-JS fallback).
 
   Every form's rules are re-implemented server-side in `server/forms.ts`, including server-only rules and form-level errors (`__form`). The multistep form is rendered entirely by the server.
-- **Server validation**: `src/integrator/server-validation.ts` is a small fetch transport (until the TYPO3 adapter ships one). `01-contact` uses `client+server` mode, `08-server-mode` uses `server` mode.
+- **Server validation** uses the built-in TYPO3 transport against the mock's `X-Form-Validate` support. `01-contact` uses `client+server` mode, `08-server-mode` uses `server` mode.
 - **Integrator code** (`src/integrator/`) is what an integrator has to write today for things the library doesn't cover. Its size is tracked as a finding. The goal is to shrink it to nothing.
 - **Debug panel**: every page has a collapsible "FormLayer events" log at the bottom.
 

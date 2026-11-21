@@ -32,6 +32,8 @@ export interface ServerValidationOptions {
   validate(request: ServerValidationRequest): Promise<ServerValidationResult>;
   /** Wait after a field asks for a check, to batch fields that change together. Default 300 ms. */
   debounceMs?: number;
+  /** Whether this transport can serve a form at all (for example only AJAX-enabled forms). Default: yes. */
+  isAvailable?(form: HTMLFormElement): boolean;
 }
 
 export interface ServerValidationErrorDetail {
@@ -46,6 +48,7 @@ export function resolveServerValidationMode(
   options: ServerValidationOptions | undefined,
 ): ServerValidationMode {
   if (!options?.validate) return 'client';
+  if (options.isAvailable && !options.isAvailable(formEl)) return 'client';
   const attr = formEl.getAttribute('data-server-validation') as ServerValidationMode | null;
   if (attr && MODES.includes(attr)) return attr;
   return options.mode ?? 'client';

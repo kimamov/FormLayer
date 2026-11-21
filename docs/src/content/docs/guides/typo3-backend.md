@@ -110,6 +110,36 @@ The custom Form template outputs these when AJAX is enabled:
 
 The middleware sets `useAjax: true` on every AJAX request so re-rendered steps always include `__persistenceIdentifier`. Without it, subsequent step submissions fail with a 400 error.
 
+## Validate-only requests
+
+Used by [server validation](/guides/server-validation/) (`data-server-validation` on the form). The frontend sends the whole form, like a submit, with one extra header:
+
+```http
+POST /contact
+X-Form-Ajax: 1
+X-Form-Validate: email,username
+```
+
+The middleware needs a branch for requests carrying `X-Form-Validate`:
+
+1. Bind `FormRuntime` exactly as for an AJAX submit and **validate the current page**.
+2. Do **not** advance the page, update `__state`, render, or run finishers. Nothing is saved or sent.
+3. Strip errors on fields disabled by client variants, as for submits.
+4. Return only the requested fields:
+
+```json
+{
+  "fields": { "email": ["This email address is already registered."], "username": [] },
+  "form": []
+}
+```
+
+Keys may be element identifiers or full names (`tx_form_formframework[contact][email]`). `[]` or a missing key means valid. `form` holds errors that belong to no single field. Use `400` for malformed requests, as for submits.
+
+Validate-only requests can be sent while the user types, so rate-limit them like other public endpoints. They must never trigger finishers or mails.
+
+To mark validators that only exist in PHP, `sitepackage:form.validationData` should emit them with `"server": true`, for example `{"type":"UniqueEmail","server":true}`. The client then skips them silently and leaves them to these requests.
+
 ## Fluid Templates
 
 ### Plugin Render Template

@@ -2,10 +2,14 @@ import { formRegistry } from '../forms/registry';
 import { registerFieldType } from '../forms/field-types';
 import { registerDefaultValidators, registerValidator } from '../forms/validators';
 import { createTypo3Submit } from './submit';
+import { createTypo3ServerValidation } from './server-validation';
+import type { ServerValidationOptions } from '../forms/server-validation';
 import type { Typo3FormsOptions, Typo3FormsApi } from './types';
 import type { FormSubmitFunction, RegistryEventHandler } from '../forms/types';
 
 export { createTypo3Submit, isTypo3AjaxSubmitEnabled } from './submit';
+export { createTypo3ServerValidation, normalizeTypo3ValidationResponse } from './server-validation';
+export type { Typo3ServerValidationOptions } from './server-validation';
 export type { Typo3SubmitDeps } from './submit';
 export type { Typo3FormsOptions, Typo3FormsHooks, Typo3AjaxFormResponse, Typo3FormsApi } from './types';
 
@@ -34,11 +38,13 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
     formRegistry.registerFormPlugin(factory);
   }
 
+  const serverValidation = resolveServerValidation(options?.serverValidation);
+
   const controllerOptions = {
     ...(options?.fieldSelector ? { fieldSelector: options.fieldSelector } : {}),
     ...(options?.fieldsMap ? { fieldsMap: options.fieldsMap } : {}),
     ...(options?.validationMessages ? { messages: options.validationMessages } : {}),
-    ...(options?.serverValidation ? { serverValidation: options.serverValidation } : {}),
+    ...(serverValidation ? { serverValidation } : {}),
   };
   const hasControllerOptions = Object.keys(controllerOptions).length > 0;
 
@@ -103,4 +109,14 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
       initialized = false;
     },
   };
+}
+
+/** The TYPO3 transport by default; options without `validate` adjust it; a full `validate` replaces it. */
+function resolveServerValidation(
+  option: Partial<ServerValidationOptions> | false | undefined,
+): ServerValidationOptions | undefined {
+  if (option === false) return undefined;
+  const defaults = createTypo3ServerValidation({ mode: option?.mode, debounceMs: option?.debounceMs });
+  if (!option?.validate) return { ...defaults, ...option, validate: defaults.validate } as ServerValidationOptions;
+  return option as ServerValidationOptions;
 }
