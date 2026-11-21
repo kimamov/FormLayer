@@ -49,7 +49,7 @@ const serverValidation: ServerValidationOptions = {
 formRegistry.init({ submitFn, controllerOptions: { serverValidation } });
 ```
 
-With TYPO3, pass it to `initTypo3Forms({ serverValidation })`. A ready-made TYPO3 transport is planned ([#10](https://github.com/kimamov/FormLayer/issues/10)).
+With TYPO3 you don't need a transport: `initTypo3Forms()` includes one (see [below](#typo3)).
 
 A form can choose its own mode in the markup, which overrides `mode`:
 
@@ -100,6 +100,22 @@ form.addEventListener('formlayer:server-validation-error', (event) => {
   console.warn('Live validation unavailable', (event as CustomEvent).detail);
 });
 ```
+
+## TYPO3
+
+`initTypo3Forms()` sets up `createTypo3ServerValidation()` for you. Forms opt in in the markup, and only AJAX-enabled forms (`data-ajax="1"`) take part:
+
+```html
+<form id="contact" data-ajax="1" data-server-validation="client+server" …>
+```
+
+```typescript
+initTypo3Forms();                                          // TYPO3 transport, off until a form opts in
+initTypo3Forms({ serverValidation: { mode: 'client+server', debounceMs: 400 } }); // on for every AJAX form
+initTypo3Forms({ serverValidation: false });               // never
+```
+
+The transport posts the whole form to its `action` with `X-Form-Ajax: 1` and `X-Form-Validate: <field>,<field>`. It maps answers keyed by element identifier or by full name (`tx_form_formframework[contact][email]`) onto the fields. The sitepackage middleware needs a validate-only branch for this; see [Backend (PHP) › Validate-only requests](/guides/typo3-backend/#validate-only-requests).
 
 ## Try it
 

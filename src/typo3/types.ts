@@ -17,10 +17,12 @@ export interface Typo3FormsOptions {
   /** Translations for validator message keys, e.g. rendered from TYPO3 XLIFF as JSON. */
   validationMessages?: ValidationMessages;
   /**
-   * Server validation while the user fills in the form. Forms opt in with
-   * `mode` or `data-server-validation="client+server|server"` on the `<form>`.
+   * Server validation while the user fills in the form. Uses the TYPO3
+   * transport (`createTypo3ServerValidation()`) unless you pass your own
+   * `validate`. Off until a form opts in with `data-server-validation` (or you
+   * set `mode`), and only on AJAX-enabled forms. `false` turns it off entirely.
    */
-  serverValidation?: ServerValidationOptions;
+  serverValidation?: Partial<ServerValidationOptions> | false;
   /** Extra custom field types registered globally before form init. */
   additionalFieldTypes?: CustomFieldsMap;
   additionalFormPlugins?: FormPluginFactory[];

@@ -65,6 +65,14 @@ const api = initTypo3Forms({
     () => import('./plugins/form-analytics'),
   ],
 
+  // Translations for validator messages (e.g. from TYPO3 XLIFF, rendered as JSON)
+  validationMessages: { NotEmpty: 'Dieses Feld ist erforderlich.' },
+
+  // Server validation while filling in: the TYPO3 transport is built in.
+  // Forms opt in with data-server-validation="client+server" (AJAX forms only),
+  // or set a mode here. `false` turns it off.
+  serverValidation: { debounceMs: 300 },
+
   // Override the submit function entirely
   // onSubmit: myCustomSubmitFn,
 
