@@ -1,6 +1,6 @@
 # formlayer-plugin-client-variants
 
-Conditional field visibility form plugin for [FormLayer](https://github.com/your-org/formlayer).
+Conditional field visibility form plugin for [FormLayer](https://github.com/kimamov/FormLayer).
 
 ## Install
 
@@ -30,4 +30,6 @@ registerClientVariantsPlugin();
 initTypo3Forms();
 ```
 
-Configure via `data-client-variants` on field wrappers. See the FormLayer docs for expression syntax.
+Configure via `data-client-variants` on field wrappers or on any container (fieldset, section) to show or hide a whole group. Hidden fields are skipped by validation, left out of the submitted data and count as empty in other conditions, so chained conditions settle. Conditions are evaluated before first paint; with `registerClientVariantsPlugin({ lazy: true })` add `[data-client-variants]:not([data-fl-evaluated]) { visibility: hidden; }`.
+
+See the [Conditional Fields guide](https://kimamov.github.io/FormLayer/guides/conditional-fields/) for the expression syntax and server-side parity.

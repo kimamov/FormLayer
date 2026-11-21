@@ -211,6 +211,8 @@ export interface FormPluginHost {
   readonly id: string;
   getFieldValue(name: string): string | undefined;
   getFieldNames(): string[];
+  /** Names of the fields whose wrapper is `element` or inside it. */
+  getFieldsIn(element: Element): string[];
   setFieldEnabled(name: string, enabled: boolean): void;
   on(event: FieldEvents, handler: FieldEventHandler): () => void;
   on(event: FormEvents, handler: FormLevelEventHandler): () => void;

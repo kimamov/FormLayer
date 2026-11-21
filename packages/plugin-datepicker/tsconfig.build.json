@@ -6,7 +6,10 @@
     "emitDeclarationOnly": true,
     "declarationDir": "./dist",
     "rootDir": "./src",
-    "allowImportingTsExtensions": false
+    "allowImportingTsExtensions": false,
+    "paths": {}
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
