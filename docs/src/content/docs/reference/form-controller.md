@@ -12,14 +12,18 @@ Pass options as the third argument to `formRegistry.register()`, or via the `con
 ```typescript
 interface FormControllerOptions {
   fieldSelector?: string;
-  /** Options applied to every default FieldController in this form. */
-  fieldOptions?: FieldControllerOptions;
+  /** Options applied to every field in this form (validateOn, debounceMs, error rendering, …). */
+  fieldOptions?: FieldOptions;
   /** Map `data-field-type` values to custom FormField implementations. */
   fieldsMap?: CustomFieldsMap;
   loadingState?: false | FormLoadingStateOptions;
   onLoadingStateChange?: (detail: FormLoadingStateDetail) => void;
   /** Called when the form fails validation (client- or server-side). Complements form:invalid. */
   onFormInvalid?: (detail: FormEventDetail) => void;
+  /** Validators for this form only, looked up before the global registry. */
+  validators?: Validator[];
+  /** Translations for validator message keys in this form. */
+  messages?: ValidationMessages;
 }
 
 interface FormLoadingStateOptions {
@@ -83,7 +87,7 @@ const state: FormState = form.getState();
 
 ### `validate()`
 
-Validates all fields. Returns a promise resolving to `true` if all fields are valid. Focuses the first invalid field.
+Validates all fields and the form-level rules (`data-validate-form`), waiting for async validators. Resolves to `true` if everything is valid. Focuses the first invalid field, or the `[data-fl-form-errors]` container when only form-level rules failed.
 
 ```typescript
 const isValid = await form.validate();
@@ -173,6 +177,8 @@ interface FormState {
   isValid: boolean;
   isSubmitting: boolean;
   isDirty: boolean;
+  isValidating: boolean;    // some field waits for an async validator
+  formErrors: string[];     // errors from data-validate-form rules
   fields: Record<string, FieldState>;
 }
 ```
@@ -187,6 +193,7 @@ interface FieldState {
   isDirty: boolean;
   isTouched: boolean;
   errors: string[];
+  isValidating: boolean;    // an async validator is running
 }
 ```
 

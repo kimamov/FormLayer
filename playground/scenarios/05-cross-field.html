@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cross-field rules · FormLayer playground</title>
-  <script type="module" src="/src/integrator/cross-field-validators.ts"></script>
   <script type="module" src="/src/main.ts"></script>
 </head>
 <body>
@@ -13,7 +12,7 @@
   <h1 id="cross-field-title">Create an account</h1>
 
   <aside class="scenario-notes">
-    <p><strong>Exercises:</strong> rules that depend on another field (confirm password, end date not before start date), re-validating the dependent field when the other one changes, and a form-level rule (<code>data-validate-form</code>: phone <em>or</em> backup email). The <code>Equals</code> and <code>DateNotBefore</code> validators are integrator workarounds (<code>src/integrator/cross-field-validators.ts</code>).</p>
+    <p><strong>Exercises:</strong> rules that depend on another field (confirm password, end date not before start date), re-validating the dependent field when the other one changes, and a form-level rule (<code>data-validate-form</code>: phone <em>or</em> backup email). <code>Equals</code>, <code>DateNotBefore</code> and <code>AtLeastOne</code> are built-in validators.</p>
     <p><strong>Try:</strong> make both passwords match, then change the first one. The confirmation should become invalid.</p>
   </aside>
 
