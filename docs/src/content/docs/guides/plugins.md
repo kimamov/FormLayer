@@ -219,13 +219,15 @@ For a longer tutorial (preview UI, lifecycle diagrams, event wiring, checklist),
 
 ## Creating a Custom Form Plugin
 
-Form plugins implement the `FormPlugin` interface and receive `FormPluginHost`:
+Form plugins implement the `FormPlugin` interface. A plugin class is constructed once per form, with the options given at registration, and receives `FormPluginHost` in `init()`:
 
 ```typescript
 import type { FormPlugin, FormPluginHost } from 'formlayer';
 
 export default class FormAnalyticsPlugin implements FormPlugin {
   private host!: FormPluginHost;
+
+  constructor(private readonly options?: { category: string }) {}
 
   async init(formEl: HTMLFormElement, host: FormPluginHost): Promise<void> {
     this.host = host;
@@ -246,8 +248,35 @@ export default class FormAnalyticsPlugin implements FormPlugin {
 }
 ```
 
-Register form plugins via the registry:
+Register form plugins via the registry, as a class (attached synchronously, before first paint) or as a lazy module:
 
 ```typescript
-formRegistry.registerFormPlugin(() => import('./plugins/analytics'));
+import FormAnalyticsPlugin from './plugins/analytics';
+
+formRegistry.registerFormPlugin(FormAnalyticsPlugin, { category: 'contact' });
+// or code-split:
+formRegistry.registerFormPlugin(() => import('./plugins/analytics'), { category: 'contact' });
+```
+
+### Submit hooks
+
+Plugins can take part in submitting. All hooks are optional and may be async:
+
+| Hook | When |
+|------|------|
+| `beforeValidate(ctx)` | On submit, before client validation |
+| `transformFormData(formData, ctx)` | Before the submit function runs. Return new `FormData`, or modify it and return nothing |
+| `afterSubmit({ ...ctx, result })` | After the submit function finished. `result` is the `SubmissionResult` it applied, if any |
+| `destroy()` | When the form is destroyed |
+
+`ctx` is `{ formId, formEl, submitter }`.
+
+```typescript
+export default class UtmPlugin implements FormPlugin {
+  init() {}
+  transformFormData(formData: FormData) {
+    const utm = new URLSearchParams(location.search).get('utm_source');
+    if (utm) formData.append('utm_source', utm);
+  }
+}
 ```

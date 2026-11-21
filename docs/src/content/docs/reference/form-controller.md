@@ -24,6 +24,8 @@ interface FormControllerOptions {
   validators?: Validator[];
   /** Translations for validator message keys in this form. */
   messages?: ValidationMessages;
+  /** Render form-level errors yourself (default: `<p>` per message in `[data-fl-form-errors]`). */
+  renderFormErrors?: (errors: string[], formEl: HTMLFormElement) => void;
   /** Opt-in server validation while filling in the form (see the Server Validation guide). */
   serverValidation?: ServerValidationOptions;
 }
@@ -211,10 +213,31 @@ interface FormSubmitContext {
   signal: AbortSignal;
 
   fallbackToNative(): void;
-  applyValidationErrors(errors: Record<string, string[]>): void;
+  applyResult(result: SubmissionResult): HTMLFormElement | null;
+  applyValidationErrors(errors: Record<string, string[]>, formErrors?: string[]): void;
   redirect(url: string): void;
   finish(html?: string): void;
+  replace(html: string): HTMLFormElement | null;
 }
 ```
 
-The generic `finish()` action destroys the controller and optionally replaces the form element. The TYPO3 layer handles finish/unmount separately via `unmount` — see [TYPO3 Setup](/guides/typo3-setup/).
+The simplest submit function maps the server's answer onto a [`SubmissionResult`](/reference/types/#submissionresult) and passes it to `applyResult()`:
+
+```typescript
+formRegistry.init({
+  async submitFn(ctx) {
+    const response = await fetch(ctx.formEl.action, { method: 'POST', body: ctx.formData, signal: ctx.signal });
+    if (!response.ok) return ctx.fallbackToNative();
+    const data = await response.json();
+    ctx.applyResult({ fields: data.errors, form: data.formErrors, finished: data.ok, message: data.html });
+  },
+});
+```
+
+- **Errors** are shown on their fields, form-level errors in `[data-fl-form-errors]`, and focus moves to the first problem.
+- **`finish(html)`** destroys the controller and replaces the form with the confirmation. Focus moves to `[data-form-success]` (or a `role="status"` element, or the first element), which gets `tabindex="-1"` if needed.
+- **`replace(html)`** swaps in new form markup (the next step of a multistep form). The new form is enhanced with the same options and plugins, and focus moves to `[data-fl-step-heading]` or its first heading.
+
+Focus only moves when it was inside the old form (or nowhere in particular), so it is never taken from elsewhere on the page.
+
+A `formlayer:submit-result` event with the result is dispatched on the form before it is applied.

@@ -194,10 +194,30 @@ interface FormState {
 ```typescript
 interface FormPlugin {
   init(formEl: HTMLFormElement, api: FormPluginHost): void | Promise<void>;
-  destroy(): void;
+  destroy?(): void;
+  beforeValidate?(ctx: FormPluginSubmitContext): void | Promise<void>;
+  transformFormData?(formData: FormData, ctx: FormPluginSubmitContext): FormData | void | Promise<FormData | void>;
+  afterSubmit?(ctx: FormPluginSubmitContext & { result: SubmissionResult | null }): void | Promise<void>;
 }
 
-type FormPluginFactory = () => Promise<{ default: new () => FormPlugin }>;
+type FormPluginClass<O = unknown> = new (options?: O) => FormPlugin;
+type FormPluginFactory = () => Promise<{ default: FormPluginClass }>;
+```
+
+### SubmissionResult
+
+What a submit function passes to `ctx.applyResult()`. Handled in order: errors, `redirect`, `finished` (replace the form with `message` and focus it), `html` (replace the form with the next step, enhance it and focus its heading).
+
+```typescript
+interface SubmissionResult {
+  fields?: Record<string, string[]>;
+  form?: string[];
+  redirect?: string | null;
+  finished?: boolean;
+  message?: string | null;
+  html?: string | null;
+  state?: string | null;
+}
 ```
 
 ### FormPluginHost

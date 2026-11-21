@@ -41,33 +41,35 @@ Discovers and registers all matching forms.
 formRegistry.init({
   submitFn: FormSubmitFunction,
   root?: ParentNode,              // default: document
-  formSelector?: string,          // default: 'form[id]'
+  formSelector?: string,          // default: 'form' (forms without field wrappers are skipped)
   controllerOptions?: FormControllerOptions,
 }): void
 ```
 
 ### `register(formEl, submitFn, controllerOptions?)`
 
-Registers a single form element. Returns the form controller API. No-ops if already registered.
+Registers a single form element. Returns the form controller API. No-ops if that element is already registered. Forms without an `id` get a generated one (`formlayer-1`, …).
 
 ```typescript
 const api: FormControllerApi = formRegistry.register(formEl, submitFn);
 ```
 
-### `unregister(formId)`
+### `unregister(formIdOrElement)`
 
 Destroys the controller and removes the form from the registry.
 
 ```typescript
 formRegistry.unregister('my-form');
+formRegistry.unregister(formEl);
 ```
 
-### `get(formId)`
+### `get(formIdOrElement)`
 
 Returns the `FormControllerApi` for a registered form, or `undefined`.
 
 ```typescript
 const form = formRegistry.get('contact');
+const same = formRegistry.get(document.querySelector('form')!);
 ```
 
 ### `getAll()`
@@ -76,20 +78,23 @@ Returns a `Map<string, FormControllerApi>` of all registered forms.
 
 ### `on(event, handler)` / `off(event, handler)`
 
-Subscribe to registry-level events.
+Subscribe to registry-level events. `on()` returns a function that unsubscribes.
 
 ```typescript
 formRegistry.on('form:registered', ({ formId }) => { ... });
 formRegistry.on('form:unregistered', ({ formId }) => { ... });
 ```
 
-### `registerFormPlugin(factory)`
+### `registerFormPlugin(source, options?)`
 
-Registers a form-level plugin factory. Applied to all forms registered after this call.
+Registers a form-level plugin for all forms registered after this call. `source` is a plugin class (constructed per form with `options` and attached synchronously) or a lazy module loader.
 
 ```typescript
+formRegistry.registerFormPlugin(AnalyticsPlugin, { category: 'contact' });
 formRegistry.registerFormPlugin(() => import('./plugins/analytics'));
 ```
+
+A form replaced by new markup (multistep) is registered again with the same options and plugins.
 
 ## Global Access
 

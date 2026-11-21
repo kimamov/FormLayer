@@ -27,7 +27,7 @@ FormLayer has two entry paths: **form controllers** (full `<form>` enhancement) 
 flowchart TB
   subgraph formPath["Form path — one FormController per form"]
     direction TB
-    R["formRegistry.init()<br/><i>optional — multi-form, TYPO3 remount</i>"]
+    R["formRegistry.init()<br/><i>optional — multi-form, multistep replacement</i>"]
     CFC["createFormController()<br/><i>direct — single form, no registry</i>"]
     FC["FormController"]
     R --> FC
@@ -77,7 +77,7 @@ Standard fields contain an `input`, `select`, or `textarea`. Custom field types 
 
 ### The Registry
 
-The `FormRegistry` discovers forms in the DOM, creates a `FormController` per form, and loads registered `FormPlugin` factories — useful for multi-form pages and TYPO3 remounting. For a single form, call `createFormController()` directly without the registry.
+The `FormRegistry` discovers forms in the DOM, creates a `FormController` per form, and loads registered `FormPlugin` factories — useful for multi-form pages and multistep forms that replace themselves. For a single form, call `createFormController()` directly without the registry.
 
 Global custom field types are registered with `registerFieldType()` and merged into each form's `fieldsMap`. Per-form overrides pass `fieldsMap` in `FormControllerOptions`.
 
@@ -92,6 +92,6 @@ FormLayer is split into two layers:
 | Layer | Import | Purpose |
 |-------|--------|---------|
 | **Generic** | `import { formRegistry, initField } from 'formlayer'` | Framework-agnostic form/field controllers, validators, plugins, events, loading state |
-| **TYPO3** | `import { initTypo3Forms } from 'formlayer/typo3'` | One-call setup for TYPO3 EXT:form with AJAX submit, multistep remounting, and hooks |
+| **TYPO3** | `import { initTypo3Forms } from 'formlayer/typo3'` | One-call setup for TYPO3 EXT:form with AJAX submit, multistep form replacement, and hooks |
 
 The generic layer has zero TYPO3 knowledge. The TYPO3 layer is a thin wrapper that configures the generic library with TYPO3-specific defaults.
