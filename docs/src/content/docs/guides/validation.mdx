@@ -1,6 +1,6 @@
 ---
 title: Validation
-description: All built-in validators and how to create custom ones.
+description: Built-in validators, validation timing, custom, async, cross-field and form-level rules, and translations.
 ---
 
 import FormPreview from '../../../components/FormPreview.astro';
@@ -135,90 +135,165 @@ Validates uploaded file sizes. Supports units like `1K`, `5M`, `1G`.
 </div>
 ```
 
-## Custom Validators
+### Count, MimeType
 
-Register a custom validator before initializing forms:
+TYPO3 rules for checkbox groups, multi-selects and file inputs: `Count` checks the number of selected values (`minimum`, `maximum`), `MimeType` checks every selected file's type (`allowedMimeTypes`, wildcards like `image/*` allowed).
 
-```typescript
-import { registerDefaultValidators, registerValidator } from 'formlayer';
+### Equals, DateNotBefore
 
-registerDefaultValidators();
+Cross-field rules: the value must equal another field's value, or a date must not be before another field's date. Name the other field in `options.field`.
 
-registerValidator({
-  type: 'PasswordStrength',
-  validate(value, options) {
-    if (!value) return { valid: true, message: '' };
-
-    const hasUpper = /[A-Z]/.test(value);
-    const hasLower = /[a-z]/.test(value);
-    const hasNumber = /\d/.test(value);
-    const hasSpecial = /[!@#$%^&*]/.test(value);
-    const strong = hasUpper && hasLower && hasNumber && hasSpecial && value.length >= 8;
-
-    return {
-      valid: strong,
-      message: strong ? '' : (options['message'] as string) ?? 'Password is too weak',
-    };
-  },
-});
+```html
+<div data-form-field="passwordRepeat"
+     data-validate='[{"type":"Equals","options":{"field":"password","message":"The passwords don’t match."}}]'>
 ```
 
-Then use it in HTML:
+### AtLeastOne (form-level)
+
+At least one of `options.fields` must have a value. Put it on the form, not a field. See [Form-level rules](#form-level-rules).
+
+## When validation runs
+
+By default FormLayer follows the timing that works best for users:
+
+| Moment | What happens |
+|--------|--------------|
+| Typing | Nothing new is reported. If the field already shows an error, it is re-checked after a short pause, so the error clears as soon as it is fixed. |
+| Leaving a field you edited | The field is validated. Leaving a field you never touched shows nothing. |
+| Choosing a value (select, radio, checkbox, file) | Validated at once. |
+| Submitting | Every field and form-level rule is validated; focus moves to the first problem. |
+
+Change it per field with `data-validate-on`, or for every field with the `validateOn` field option:
+
+| Value | Behaviour |
+|-------|-----------|
+| `blur` | The default described above |
+| `change` | Also validate while typing (after a pause) |
+| `submit` | Only on submit; shown errors still clear as the user fixes them |
+
+```html
+<div data-form-field="username" data-validate-on="change" data-validate='[...]'>
+```
+
+## Custom validators
+
+Use `defineValidator()`. Declared options are converted from the attribute's JSON (`Number`, `String`, `Boolean`, `Array`), and a result can carry a translation key:
+
+```typescript
+import { defineValidator, registerValidator, invalid, valueToString, VALID } from 'formlayer';
+
+registerValidator(defineValidator({
+  type: 'PasswordStrength',
+  options: { minimum: Number },
+  validate(value, { minimum = 8 }) {
+    const text = valueToString(value);
+    if (!text) return VALID;
+    const strong = text.length >= minimum && /[A-Z]/.test(text) && /[a-z]/.test(text) && /\d/.test(text);
+    return strong
+      ? VALID
+      : invalid('PasswordStrength', `Use ${minimum}+ characters with upper and lower case and a number.`, { minimum });
+  },
+}));
+```
 
 ```html
 <div data-form-field="password"
-     data-validate='[
-       {"type":"NotEmpty","options":{"message":"Password is required"}},
-       {"type":"PasswordStrength","options":{"message":"Use 8+ chars with upper, lower, number, and special"}}
-     ]'>
-  <label for="password">Password</label>
-  <input id="password" type="password" name="password" />
-  <div id="password-errors" class="invalid-feedback"></div>
-</div>
+     data-validate='[{"type":"NotEmpty"},{"type":"PasswordStrength","options":{"minimum":10}}]'>
 ```
 
-## Async Validators
+`value` is the field's typed value: a `string`, a `string[]` for checkbox groups and multi-selects, or a `File[]` for file inputs. `valueToString()` joins lists with commas.
 
-Validators can return a `Promise` for server-side checks:
+The third argument, `ctx`, gives a validator what it needs beyond its own value:
+
+| `ctx` | |
+|-------|-|
+| `ctx.form.getValue(name)` | Another field's value |
+| `ctx.files` | Selected files of a file input |
+| `ctx.signal` | Aborted when a newer validation of the field starts |
+| `ctx.field` | `{ name, element }` of the field |
+| `ctx.rule` | The rule as written in `data-validate` |
+
+To use a validator in one form only, pass it to that form instead of registering it globally: `createFormController(form, submit, { validators: [myValidator] })`.
+
+## Async validators
+
+A validator may return a `Promise`. While it runs the field has `isValidating: true`, newer runs abort older ones (pass `ctx.signal` to `fetch`), and submitting waits for every pending result.
 
 ```typescript
-registerValidator({
-  type: 'UniqueEmail',
-  async validate(value, options) {
-    if (!value) return { valid: true, message: '' };
-
-    const response = await fetch(`/api/check-email?email=${encodeURIComponent(value)}`);
-    const data = await response.json();
-
-    return {
-      valid: data.available,
-      message: data.available ? '' : (options['message'] as string) ?? 'Email already taken',
-    };
+registerValidator(defineValidator({
+  type: 'UsernameAvailable',
+  async validate(value, _options, ctx) {
+    const name = valueToString(value);
+    if (!name) return VALID;
+    const res = await fetch(`/api/username-available?name=${encodeURIComponent(name)}`, { signal: ctx.signal });
+    const { available } = await res.json();
+    return available ? VALID : invalid('UsernameAvailable', 'This username is taken.');
   },
+}));
+```
+
+Async checks are a convenience: the server still validates on submit.
+
+## Cross-field rules
+
+Rules that name another field with `options.field` (or `options.fields`) are re-checked when that field changes, once the user has been in the dependent field. Changing the password re-validates the confirmation; changing a start date re-validates the end date.
+
+## Form-level rules
+
+Rules that belong to the form rather than one field go on the `<form>` in `data-validate-form`. Their errors are rendered into an element marked `data-fl-form-errors` and are available as `formErrors` in the form state.
+
+```html
+<form id="signup" data-validate-form='[{"type":"AtLeastOne","options":{"fields":["phone","backupEmail"],"message":"Give us a phone number or a backup email address."}}]'>
+  <div class="form-errors" data-fl-form-errors tabindex="-1"></div>
+  …
+</form>
+```
+
+When only form-level rules fail, submitting moves focus to that container. Its errors clear as soon as the user fixes them.
+
+## Server-only rules
+
+Mark a rule `"server": true` when it can only be checked on the server (for example "email already registered"). It is skipped on the client without a warning, and the server's error is shown after submit. Rules of a type that has no client validator are treated the same way.
+
+```html
+<div data-form-field="email" data-validate='[{"type":"NotEmpty"},{"type":"EmailAddress"},{"type":"UniqueEmail","server":true}]'>
+```
+
+## Translating messages
+
+A message is chosen in this order:
+
+1. `options.message` in the rule (for example rendered by TYPO3 from the form definition),
+2. the result's key in the form's `messages`,
+3. the key in the global messages from `setValidationMessages()`,
+4. the validator's English default.
+
+```typescript
+import { setValidationMessages } from 'formlayer';
+
+setValidationMessages({
+  NotEmpty: 'Dieses Feld ist erforderlich.',
+  'StringLength.tooShort': 'Mindestens {minimum} Zeichen.',
+  'Count.tooFew': 'Bitte mindestens {minimum} auswählen.',
 });
 ```
 
-:::caution
-Async validators work with `runValidatorsAsync()` but the default `FieldController.validate()` uses the synchronous `runValidators()`. To use async validators, provide a custom `validate` function in `FieldControllerOptions` that calls `runValidatorsAsync`.
-:::
+`{name}` placeholders are filled from the result's params. A function `(key, params) => string | undefined` works too. With `initTypo3Forms({ validationMessages })` the messages can come straight from TYPO3 translations.
 
-## Custom Validation Logic per Field
+Built-in keys: `NotEmpty`, `StringLength.tooShort`, `StringLength.tooLong`, `EmailAddress`, `RegularExpression`, `NumberRange.tooLow`, `NumberRange.tooHigh`, `Integer`, `Float`, `Number`, `Alphanumeric`, `DateTime`, `DateRange.tooEarly`, `DateRange.tooLate`, `FileSize.tooSmall`, `FileSize.tooLarge`, `MimeType`, `Count.tooFew`, `Count.tooMany`, `Equals`, `DateNotBefore`, `AtLeastOne`.
 
-Override the validation pipeline for a specific field using `FieldControllerOptions`:
+## Custom validation logic per field
+
+The `validate` field option wraps the whole pipeline for a field. `defaultValidate()` runs the field's rules; it may return a promise when async rules are involved.
 
 ```typescript
 import { initField } from 'formlayer';
 
-const ctrl = initField(document.getElementById('confirm-password')!, {
-  validate(value, rules, defaultValidate) {
-    const result = defaultValidate();
+const field = initField(document.querySelector('[data-form-field="coupon"]')!, {
+  async validate(value, rules, defaultValidate) {
+    const result = await defaultValidate();
     if (!result.isValid) return result;
-
-    const password = document.getElementById('password') as HTMLInputElement;
-    if (value !== password.value) {
-      return { isValid: false, errors: ['Passwords do not match'] };
-    }
-    return result;
+    return String(value).startsWith('X') ? { isValid: false, errors: ['X coupons expired.'] } : result;
   },
 });
 ```

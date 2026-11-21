@@ -1,30 +1,21 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 
 /**
  * TYPO3 `Count`: number of selected values (checkbox groups, multi-selects).
  * Array values are counted directly; a string is treated as a comma-joined list
  * (custom fields that report their selection as one string).
  */
-export const count: Validator = {
+export const count = defineValidator({
   type: 'Count',
-  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  options: { minimum: Number, maximum: Number },
+  validate(value, { minimum = 0, maximum = Infinity }) {
     const selected = Array.isArray(value) ? value.length : value.split(',').filter((v) => v !== '').length;
-    const min = Number(options['minimum'] ?? 0);
-    const max = Number(options['maximum'] ?? Infinity);
-    const customMsg = options.message as string | undefined;
-
-    if (selected < min) {
-      return {
-        valid: false,
-        message: customMsg ?? (min === 1 ? 'Choose at least one option.' : `Choose at least ${min} options.`),
-      };
+    if (selected < minimum) {
+      return invalid('Count.tooFew', minimum === 1 ? 'Choose at least one option.' : `Choose at least ${minimum} options.`, { minimum, maximum });
     }
-    if (selected > max) {
-      return {
-        valid: false,
-        message: customMsg ?? (max === 1 ? 'Choose no more than one option.' : `Choose no more than ${max} options.`),
-      };
+    if (selected > maximum) {
+      return invalid('Count.tooMany', maximum === 1 ? 'Choose no more than one option.' : `Choose no more than ${maximum} options.`, { minimum, maximum });
     }
-    return { valid: true, message: '' };
+    return VALID;
   },
-};
+});

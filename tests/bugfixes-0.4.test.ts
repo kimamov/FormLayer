@@ -12,6 +12,7 @@ import { registerFieldType, unregisterFieldType } from '../src/forms/field-types
 import { initField } from '../src/forms/init-field';
 import { getValidator, registerDefaultValidators, registerValidator, runValidators } from '../src/forms/validators';
 import type { FormSubmitFunction, FormFieldClass } from '../src/forms/types';
+import { detachedContext } from '../src/forms/validation';
 
 registerDefaultValidators();
 
@@ -54,18 +55,18 @@ afterEach(() => {
 });
 
 describe('lazy factory detection', () => {
-  it('treats a field class without its own constructor as a class, not a lazy loader', () => {
+  it('treats a field class without its own constructor as a class, not a lazy loader', async () => {
     expect(NoCtorField.length).toBe(0);
     expect(isLazyFactory(NoCtorField)).toBe(false);
   });
 
-  it('treats lazy() and unwrapped zero-argument loaders as lazy', () => {
+  it('treats lazy() and unwrapped zero-argument loaders as lazy', async () => {
     const loader = () => Promise.resolve({ default: NoCtorField as FormFieldClass });
     expect(isLazyFactory(lazy(loader))).toBe(true);
     expect(isLazyFactory(loader)).toBe(true);
   });
 
-  it('creates a constructor-less field registered with registerFieldType', () => {
+  it('creates a constructor-less field registered with registerFieldType', async () => {
     registerFieldType('no-ctor', NoCtorField);
     const form = mountForm('<div data-form-field="a" data-field-type="no-ctor"><input name="a" value="x"></div>');
     const ctrl = new FormController(form, noopSubmit);
@@ -73,7 +74,7 @@ describe('lazy factory detection', () => {
     ctrl.destroy();
   });
 
-  it('creates a constructor-less field from a per-form fieldsMap', () => {
+  it('creates a constructor-less field from a per-form fieldsMap', async () => {
     const form = mountForm('<div data-form-field="a" data-field-type="local"><input name="a" value="y"></div>');
     const ctrl = new FormController(form, noopSubmit, { fieldsMap: { local: NoCtorField } });
     expect(ctrl.getField('a')?.value).toBe('y');
@@ -125,7 +126,7 @@ describe('lazy fields', () => {
 });
 
 describe('custom fields', () => {
-  it('pass selected files to FileSize', () => {
+  it('pass selected files to FileSize', async () => {
     const wrapper = document.createElement('div');
     wrapper.setAttribute('data-form-field', 'upload');
     wrapper.setAttribute('data-validate', '[{"type":"FileSize","options":{"maximum":"1K"}}]');
@@ -137,7 +138,7 @@ describe('custom fields', () => {
     Object.defineProperty(input, 'value', { value: 'C:\\fakepath\\big.bin' });
 
     const field = initField(wrapper, { field: NoCtorField });
-    expect(field.validate().isValid).toBe(false);
+    expect((await field.validate()).isValid).toBe(false);
   });
 });
 
@@ -156,7 +157,7 @@ describe('registry', () => {
     expect(unregistered).toHaveBeenCalledWith({ formId: 'done' });
   });
 
-  it('still emits form:unregistered once on unregister()', () => {
+  it('still emits form:unregistered once on unregister()', async () => {
     const registry = new FormRegistry();
     const unregistered = vi.fn();
     registry.on('form:unregistered', unregistered);
@@ -170,7 +171,7 @@ describe('registry', () => {
 });
 
 describe('radio and checkbox groups', () => {
-  it('react to a change on the 2nd radio', () => {
+  it('react to a change on the 2nd radio', async () => {
     const form = mountForm(`
       <fieldset data-form-field="topic">
         <input type="radio" id="t1" name="topic" value="support">
@@ -189,7 +190,7 @@ describe('radio and checkbox groups', () => {
     ctrl.destroy();
   });
 
-  it('react to a change on a later checkbox', () => {
+  it('react to a change on a later checkbox', async () => {
     const form = mountForm(`
       <fieldset data-form-field="interests">
         <input type="checkbox" id="i1" name="interests[]" value="design">
@@ -203,7 +204,7 @@ describe('radio and checkbox groups', () => {
     ctrl.destroy();
   });
 
-  it('do not count moving focus between options as leaving the field', () => {
+  it('do not count moving focus between options as leaving the field', async () => {
     const form = mountForm(`
       <fieldset data-form-field="topic" data-validate='[{"type":"NotEmpty"}]'>
         <input type="radio" id="t1" name="topic" value="support">
@@ -251,7 +252,7 @@ describe('formnovalidate', () => {
 });
 
 describe('required stays exposed', () => {
-  it('keeps native constraints inside a FormController form (novalidate)', () => {
+  it('keeps native constraints inside a FormController form (novalidate)', async () => {
     const form = mountForm('<div data-form-field="a"><input name="a" required minlength="2"></div>');
     const ctrl = new FormController(form, noopSubmit);
     const input = form.querySelector('input')!;
@@ -261,7 +262,7 @@ describe('required stays exposed', () => {
     ctrl.destroy();
   });
 
-  it('mirrors a stripped required as aria-required on standalone fields and restores it', () => {
+  it('mirrors a stripped required as aria-required on standalone fields and restores it', async () => {
     const wrapper = document.createElement('div');
     wrapper.setAttribute('data-form-field', 'a');
     wrapper.innerHTML = '<input name="a" required>';
@@ -277,13 +278,13 @@ describe('required stays exposed', () => {
 });
 
 describe('TYPO3 validator parity', () => {
-  it('Count checks the number of selected values', () => {
+  it('Count checks the number of selected values', async () => {
     const count = getValidator('Count')!;
-    expect(count.validate('', { minimum: 1 })).toMatchObject({ valid: false });
-    expect(count.validate('a', { minimum: 1, maximum: 2 })).toMatchObject({ valid: true });
-    expect(count.validate('a,b,c', { minimum: 1, maximum: 2 })).toMatchObject({ valid: false });
-    expect(count.validate('', { maximum: 2 })).toMatchObject({ valid: true });
-    expect(count.validate('', { minimum: 1, message: 'Pick one' })).toEqual({ valid: false, message: 'Pick one' });
+    expect(count.validate('', { minimum: 1 }, detachedContext())).toMatchObject({ valid: false });
+    expect(count.validate('a', { minimum: 1, maximum: 2 }, detachedContext())).toMatchObject({ valid: true });
+    expect(count.validate('a,b,c', { minimum: 1, maximum: 2 }, detachedContext())).toMatchObject({ valid: false });
+    expect(count.validate('', { maximum: 2 }, detachedContext())).toMatchObject({ valid: true });
+    expect(count.validate('', { minimum: 1, message: 'Pick one' }, detachedContext())).toMatchObject({ valid: false, message: 'Pick one' });
   });
 
   it('Count works on a checkbox group field', async () => {
@@ -302,22 +303,22 @@ describe('TYPO3 validator parity', () => {
     ctrl.destroy();
   });
 
-  it('MimeType checks the reported type of every selected file', () => {
+  it('MimeType checks the reported type of every selected file', async () => {
     const mimeType = getValidator('MimeType')!;
     const pdf = new File(['x'], 'a.pdf', { type: 'application/pdf' });
     const png = new File(['x'], 'a.png', { type: 'image/png' });
     const txt = new File(['x'], 'a.txt', { type: 'text/plain' });
-    const options = (files: File[], allowed: unknown) => ({ __files: files, allowedMimeTypes: allowed });
+    const check = (files: File[], allowedMimeTypes: unknown) => mimeType.validate(files, { allowedMimeTypes }, detachedContext());
 
-    expect(mimeType.validate('', options([], ['application/pdf']))).toMatchObject({ valid: true });
-    expect(mimeType.validate('a', options([pdf], ['application/pdf']))).toMatchObject({ valid: true });
-    expect(mimeType.validate('a', options([png], ['application/pdf', 'image/*']))).toMatchObject({ valid: true });
-    expect(mimeType.validate('a', options([pdf, txt], 'application/pdf, image/*'))).toMatchObject({ valid: false });
+    expect(check([], ['application/pdf'])).toMatchObject({ valid: true });
+    expect(check([pdf], ['application/pdf'])).toMatchObject({ valid: true });
+    expect(check([png], ['application/pdf', 'image/*'])).toMatchObject({ valid: true });
+    expect(check([pdf, txt], 'application/pdf, image/*')).toMatchObject({ valid: false });
   });
 });
 
 describe('async validators', () => {
-  it('are reported with console.error instead of being skipped silently', () => {
+  it('are reported with console.error instead of being skipped silently', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     registerValidator({ type: 'AsyncNo', validate: async () => ({ valid: false, message: 'nope' }) });
     runValidators([{ type: 'AsyncNo' }], 'x');

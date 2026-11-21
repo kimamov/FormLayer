@@ -1,5 +1,6 @@
 import type {
   DomFormField,
+  FieldFormContext,
   FormField,
   FieldControllerEventHandler,
   FieldControllerEventType,
@@ -11,7 +12,8 @@ import { DEBOUNCE_MS, SELECTORS } from './types';
 import type { FieldOptions } from './field-options';
 import { FieldEmitter } from './field-emitter';
 import { FieldErrorPresenter } from './field-error-presenter';
-import { runValidators } from './validators/index';
+import { getValidator } from './validators/index';
+import { runRules, ruleDependencies, type ValidatorContext } from './validation';
 import { type FieldValue, isFileValue, valueKey } from './field-value';
 
 export type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -55,11 +57,15 @@ export interface FieldContext {
    * Default: the first control. Pass every option of a group.
    */
   setControl(element: HTMLElement | HTMLElement[]): void;
-  /** The user is editing (typing): marks the field dirty; validates after a pause once touched. */
+  /**
+   * The user is editing (typing): marks the field dirty. After a short pause it
+   * re-validates while errors are shown (so they clear once fixed), or always
+   * with `data-validate-on="change"`.
+   */
   input(): void;
   /** The user committed a value (selected, ticked, picked): marks it dirty and touched and validates. */
   commit(): void;
-  /** The user left the field: marks it touched and validates. */
+  /** The user left the field: marks it touched and validates if it was edited. */
   touch(): void;
 }
 
@@ -87,6 +93,11 @@ export abstract class BaseField implements DomFormField {
   private serverErrors: string[] = [];
   private serverErrorKey: string | null = null;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private form: FieldFormContext | null = null;
+  private validationRun = 0;
+  private validationAbort: AbortController | null = null;
+  private lastValidatedKey: string | null = null;
+  private readonly _dependencies: readonly string[];
   private readonly disabledByField = new Set<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>();
 
   constructor(wrapper: HTMLElement, options: FieldOptions = {}) {
@@ -94,6 +105,19 @@ export abstract class BaseField implements DomFormField {
     this.name = wrapper.getAttribute('data-form-field') ?? '';
     this.options = options;
     this.rules = this.parseRules();
+    this._dependencies = ruleDependencies(this.rules);
+  }
+
+  /** Names of other fields this field's rules refer to (`options.field` / `options.fields`). */
+  get dependencies(): readonly string[] {
+    return this._dependencies;
+  }
+
+  /** `data-validate-on` on the wrapper, else the `validateOn` option, else `blur`. */
+  private get trigger(): 'blur' | 'change' | 'submit' {
+    const attr = this.wrapper.getAttribute('data-validate-on');
+    if (attr === 'blur' || attr === 'change' || attr === 'submit') return attr;
+    return this.options.validateOn ?? 'blur';
   }
 
   /** Field-type hook: build the adapter. Called once, from {@link init}. */
@@ -128,8 +152,9 @@ export abstract class BaseField implements DomFormField {
   // public API (FormField / DomFormField)
   // -------------------------------------------------------------------------
 
+  /** A snapshot of the field state. `value` is read from the DOM, so it is never stale mid-typing. */
   getState(): FieldState {
-    return { ...this._state };
+    return { ...this._state, value: this.adapter.read() };
   }
 
   get element(): HTMLElement {
@@ -148,8 +173,9 @@ export abstract class BaseField implements DomFormField {
     return this._enabled;
   }
 
-  connect(onChange: (state: FieldState) => void): void {
+  connect(onChange: (state: FieldState) => void, form?: FieldFormContext): void {
     this.onChange = onChange;
+    this.form = form ?? null;
   }
 
   focus(): void {
@@ -177,43 +203,67 @@ export abstract class BaseField implements DomFormField {
     this.adapter.write(value);
     this._state.isDirty = true;
     this._state.isTouched = true;
-    this.validate();
+    void this.validate();
     this.notifyChange();
   }
 
-  validate(): FieldValidationResult {
+  /**
+   * Run the field's rules and update its state and error UI. Synchronous rules
+   * apply at once; async rules set `isValidating` and update the field (and
+   * notify the form) when they settle. Starting a new run aborts the previous
+   * one, and stale results are ignored.
+   */
+  validate(): Promise<FieldValidationResult> {
+    this.validationAbort?.abort();
+    this.validationAbort = null;
+    const run = ++this.validationRun;
+
     if (!this._enabled) {
-      return { isValid: true, errors: [] };
+      return Promise.resolve({ isValid: true, errors: [] });
     }
 
     const value = this.adapter.read();
+    const key = valueKey(value);
+    this.lastValidatedKey = key;
 
-    if (this.serverErrors.length > 0 && valueKey(value) === this.serverErrorKey) {
-      return { isValid: false, errors: this.serverErrors };
+    if (this.serverErrors.length > 0 && key === this.serverErrorKey) {
+      return Promise.resolve({ isValid: false, errors: this.serverErrors });
     }
     this.serverErrors = [];
     this.serverErrorKey = null;
 
-    const defaultValidate = (): FieldValidationResult => {
-      const extraOptions: Record<string, unknown> = {};
-      const control = this.targets[0];
-      if (isFileValue(value)) {
-        extraOptions['__files'] = value;
-      } else if (control instanceof HTMLInputElement && control.type === 'file') {
-        // Custom fields that report a file input's value as a string still get its files.
-        extraOptions['__files'] = control.files;
-      }
-      const errors = runValidators(this.rules, value, extraOptions).map((f) => f.message);
-      return { isValid: errors.length === 0, errors };
+    const abort = new AbortController();
+    this.validationAbort = abort;
+
+    const defaultValidate = (): FieldValidationResult | Promise<FieldValidationResult> => {
+      const { errors, pending } = runRules(this.rules, value, this.validatorContext(value, abort.signal), {
+        validators: this.options.validators,
+        messages: this.options.messages,
+        getValidator,
+      });
+      if (!pending) return { isValid: errors.length === 0, errors };
+      // Show synchronous errors right away while async rules run.
+      this.applyResult(value, { isValid: errors.length === 0, errors }, true);
+      return pending.then((all) => ({ isValid: all.length === 0, errors: all }));
     };
 
-    const result = this.options.validate
+    const outcome = this.options.validate
       ? this.options.validate(value, this.rules, defaultValidate)
       : defaultValidate();
 
-    this._state = { ...this._state, value, isValid: result.isValid, errors: result.errors };
-    this.presenter.update(result.isValid, result.errors);
-    return result;
+    if (!(outcome instanceof Promise)) {
+      this.applyResult(value, outcome, false);
+      return Promise.resolve(outcome);
+    }
+
+    if (!this._state.isValidating) this.applyResult(value, this._state, true);
+    return outcome.then((result) => {
+      if (run !== this.validationRun) return result; // a newer run owns the state
+      this.validationAbort = null;
+      this.applyResult(value, result, false);
+      this.notifyChange();
+      return result;
+    });
   }
 
   setServerErrors(errors: string[]): void {
@@ -250,7 +300,9 @@ export abstract class BaseField implements DomFormField {
           this.disabledByField.add(el);
         }
       }
-      this._state = { ...this._state, isValid: true, errors: [] };
+      this.validationAbort?.abort();
+      this.validationRun++;
+      this._state = { ...this._state, isValid: true, errors: [], isValidating: false };
       this.presenter.update(true, []);
     }
 
@@ -263,6 +315,9 @@ export abstract class BaseField implements DomFormField {
     else this.adapter.write(this.initialValue);
 
     this.clearDebounce();
+    this.validationAbort?.abort();
+    this.validationRun++;
+    this.lastValidatedKey = null;
     this.serverErrors = [];
     this.serverErrorKey = null;
     this._state = this.freshState(this.adapter.read());
@@ -271,6 +326,8 @@ export abstract class BaseField implements DomFormField {
 
   destroy(): void {
     this.abortController.abort();
+    this.validationAbort?.abort();
+    this.validationRun++;
     this.clearDebounce();
     this.adapter?.destroy?.();
     this.onChange = null;
@@ -292,6 +349,33 @@ export abstract class BaseField implements DomFormField {
 
   protected markTouched(): void {
     this._state.isTouched = true;
+  }
+
+  private applyResult(value: FieldValue, result: FieldValidationResult, isValidating: boolean): void {
+    this._state = { ...this._state, value, isValid: result.isValid, errors: result.errors, isValidating };
+    this.presenter.update(result.isValid, result.errors);
+  }
+
+  private validatorContext(value: FieldValue, signal: AbortSignal): Omit<ValidatorContext, 'rule'> {
+    const control = this.targets[0];
+    let files: File[] = [];
+    if (isFileValue(value)) {
+      files = value;
+    } else if (control instanceof HTMLInputElement && control.type === 'file') {
+      // Custom fields that report a file input's value as a string still expose its files.
+      files = Array.from(control.files ?? []);
+    }
+    const form = this.form;
+    return {
+      field: { name: this.name, element: this.wrapper },
+      form: { getValue: (name) => (name === this.name ? value : form?.getValue(name)) },
+      files,
+      signal,
+    };
+  }
+
+  private get showsErrors(): boolean {
+    return !this._state.isValid && this._state.errors.length > 0;
   }
 
   protected notifyChange(): void {
@@ -348,23 +432,27 @@ export abstract class BaseField implements DomFormField {
     this.clearDebounce();
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
-      if (this._state.isTouched) this.validate();
+      if (this.trigger === 'change' || this.showsErrors) void this.validate();
       this.notifyChange();
-    }, DEBOUNCE_MS);
+    }, this.options.debounceMs ?? DEBOUNCE_MS);
   }
 
   private handleCommit(): void {
     this.clearDebounce();
     this._state.isDirty = true;
     this._state.isTouched = true;
-    this.validate();
+    if (this.trigger !== 'submit' || this.showsErrors) void this.validate();
     this.notifyChange();
   }
 
   private handleTouch(): void {
     this.clearDebounce();
     this._state.isTouched = true;
-    this.validate();
+    const edited = this._state.isDirty || this.showsErrors;
+    const unchanged = this.lastValidatedKey !== null && valueKey(this.adapter.read()) === this.lastValidatedKey;
+    // Validate on leaving only if the user edited the field (web.dev timing guidance), and
+    // not again if nothing changed since the last run (avoids duplicate async requests).
+    if (this.trigger !== 'submit' && edited && !unchanged) void this.validate();
     this.notifyChange();
   }
 
@@ -376,7 +464,7 @@ export abstract class BaseField implements DomFormField {
   }
 
   private freshState(value: FieldValue): FieldState {
-    return { name: this.name, value, isValid: true, isDirty: false, isTouched: false, errors: [] };
+    return { name: this.name, value, isValid: true, isDirty: false, isTouched: false, errors: [], isValidating: false };
   }
 
   private parseRules(): ValidatorRule[] {

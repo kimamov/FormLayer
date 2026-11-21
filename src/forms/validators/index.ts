@@ -1,4 +1,5 @@
 import type { FieldValue, Validator, ValidatorRule, ValidatorResult } from '../types';
+import { detachedContext, type ValidatorContext } from '../validation';
 import { notEmpty } from './not-empty';
 import { stringLength } from './string-length';
 import { emailAddress } from './email-address';
@@ -13,29 +14,19 @@ import { dateRange } from './date-range';
 import { fileSize } from './file-size';
 import { count } from './count';
 import { mimeType } from './mime-type';
+import { equals, dateNotBefore, atLeastOne } from './cross-field';
 
 const registry = new Map<string, Validator>();
 
+export const defaultValidators: Validator[] = [
+  notEmpty, stringLength, emailAddress, regularExpression, numberRange, integer, float,
+  alphanumeric, number, dateTime, dateRange, fileSize, count, mimeType,
+  equals, dateNotBefore, atLeastOne,
+];
 
-
-export function registerDefaultValidators(){
-  registerValidator(notEmpty);
-  registerValidator(stringLength);
-  registerValidator(emailAddress);
-  registerValidator(regularExpression);
-  registerValidator(numberRange);
-  registerValidator(integer);
-  registerValidator(float);
-  registerValidator(alphanumeric);
-  registerValidator(number);
-  registerValidator(dateTime);
-  registerValidator(dateRange);
-  registerValidator(fileSize);
-  registerValidator(count);
-  registerValidator(mimeType);
+export function registerDefaultValidators(): void {
+  defaultValidators.forEach(registerValidator);
 }
-
-
 
 export function getValidator(type: string): Validator | undefined {
   return registry.get(type);
@@ -45,30 +36,37 @@ export function registerValidator(validator: Validator): void {
   registry.set(validator.type, validator);
 }
 
+function contextFor(rule: ValidatorRule, ctx?: Partial<ValidatorContext>): ValidatorContext {
+  return { ...detachedContext(rule), ...ctx, rule };
+}
+
+/**
+ * Run rules synchronously and return the failures. Async validators are
+ * skipped with a console error; use {@link runValidatorsAsync} for those.
+ * Fields validate through the form pipeline instead (async-aware, translated
+ * messages, server-only rules).
+ */
 export function runValidators(
   rules: ValidatorRule[],
   value: FieldValue,
-  extraOptions?: Record<string, unknown>,
+  ctx?: Partial<ValidatorContext>,
 ): ValidatorResult[] {
   const results: ValidatorResult[] = [];
 
   for (const rule of rules) {
+    if (rule.server) continue;
     const validator = registry.get(rule.type);
     if (!validator) {
       console.warn(`[FormLayer] Unknown validator type: "${rule.type}"`);
       continue;
     }
 
-    const options = { ...(rule.options ?? {}), ...(extraOptions ?? {}) };
-    const result = validator.validate(value, options);
+    const result = validator.validate(value, rule.options ?? {}, contextFor(rule, ctx));
     if (result instanceof Promise) {
-      // Field validation is synchronous in 0.x: async validators cannot block a submit yet.
-      console.error(`[FormLayer] Async validator "${rule.type}" was skipped: field validation is synchronous in FormLayer 0.x, so this rule does not run. Validate it on the server instead.`);
+      console.error(`[FormLayer] Async validator "${rule.type}" was skipped by runValidators(); use runValidatorsAsync().`);
       continue;
     }
-    if (!result.valid) {
-      results.push(result);
-    }
+    if (!result.valid) results.push(result);
   }
 
   return results;
@@ -77,22 +75,19 @@ export function runValidators(
 export async function runValidatorsAsync(
   rules: ValidatorRule[],
   value: FieldValue,
-  extraOptions?: Record<string, unknown>,
+  ctx?: Partial<ValidatorContext>,
 ): Promise<ValidatorResult[]> {
   const results: ValidatorResult[] = [];
 
   for (const rule of rules) {
+    if (rule.server) continue;
     const validator = registry.get(rule.type);
     if (!validator) {
       console.warn(`[FormLayer] Unknown validator type: "${rule.type}"`);
       continue;
     }
-
-    const options = { ...(rule.options ?? {}), ...(extraOptions ?? {}) };
-    const result = await validator.validate(value, options);
-    if (!result.valid) {
-      results.push(result);
-    }
+    const result = await validator.validate(value, rule.options ?? {}, contextFor(rule, ctx));
+    if (!result.valid) results.push(result);
   }
 
   return results;

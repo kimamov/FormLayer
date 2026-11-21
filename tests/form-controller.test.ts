@@ -102,7 +102,7 @@ describe('FormController', () => {
   registerDefaultValidators();
 
   describe('initialization', () => {
-    it('discovers all fields in the form', () => {
+    it('discovers all fields in the form', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -113,19 +113,19 @@ describe('FormController', () => {
       expect(Object.keys(state.fields)).toHaveLength(8);
     });
 
-    it('sets form id from element', () => {
+    it('sets form id from element', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       expect(ctrl.id).toBe('registration');
     });
 
-    it('sets novalidate on the form element', () => {
+    it('sets novalidate on the form element', async () => {
       const form = createRegistrationForm();
       new FormController(form, noopSubmit);
       expect(form.hasAttribute('novalidate')).toBe(true);
     });
 
-    it('initial state is valid (no validation triggered)', () => {
+    it('initial state is valid (no validation triggered)', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       const state = ctrl.getState();
@@ -137,7 +137,7 @@ describe('FormController', () => {
   });
 
   describe('getField()', () => {
-    it('returns field state by name', () => {
+    it('returns field state by name', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -146,7 +146,7 @@ describe('FormController', () => {
       expect(field!.name).toBe('email');
     });
 
-    it('returns undefined for non-existent field', () => {
+    it('returns undefined for non-existent field', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       expect(ctrl.getField('nonexistent')).toBeUndefined();
@@ -347,7 +347,7 @@ describe('FormController', () => {
       expect(firstNameErrors.innerHTML).toContain('<em>This field is required.</em>');
     });
 
-    it('emits field:change on individual field changes', () => {
+    it('emits field:change on individual field changes', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -364,7 +364,7 @@ describe('FormController', () => {
       expect(detail.formId).toBe('registration');
     });
 
-    it('emits field:valid / field:invalid events', () => {
+    it('emits field:valid / field:invalid events', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -374,12 +374,14 @@ describe('FormController', () => {
       ctrl.on('field:invalid', invalidHandler);
 
       const input = document.getElementById('email') as HTMLInputElement;
+      input.value = 'not-an-email';
+      input.dispatchEvent(new Event('input'));
       input.dispatchEvent(new Event('blur'));
 
       expect(invalidHandler).toHaveBeenCalled();
     });
 
-    it('emits form:reset event', () => {
+    it('emits form:reset event', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -425,7 +427,7 @@ describe('FormController', () => {
   });
 
   describe('setFieldEnabled()', () => {
-    it('disables and hides a field', () => {
+    it('disables and hides a field', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -494,13 +496,13 @@ describe('FormController', () => {
   });
 
   describe('destroy()', () => {
-    it('cleans up without errors', () => {
+    it('cleans up without errors', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       expect(() => ctrl.destroy()).not.toThrow();
     });
 
-    it('clears all fields after destroy', () => {
+    it('clears all fields after destroy', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       ctrl.destroy();
@@ -798,13 +800,13 @@ describe('FormController', () => {
   });
 
   describe('isDirty computation', () => {
-    it('is not dirty initially', () => {
+    it('is not dirty initially', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
       expect(ctrl.getState().isDirty).toBe(false);
     });
 
-    it('becomes dirty when any field changes', () => {
+    it('becomes dirty when any field changes', async () => {
       const form = createRegistrationForm();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -847,6 +849,7 @@ describe('FormController', () => {
           name: this.name,
           value: 'custom-init',
           isValid: true,
+          isValidating: false,
           isDirty: false,
           isTouched: false,
           errors: [],
@@ -866,7 +869,7 @@ describe('FormController', () => {
       focus(): void {}
     }
 
-    it('uses a custom FormField class from fieldsMap for matching data-field-type', () => {
+    it('uses a custom FormField class from fieldsMap for matching data-field-type', async () => {
       const form = createFormWithCustomField();
       const ctrl = new FormController(form, noopSubmit, {
         fieldsMap: { 'custom-widget': StubCustomField },
@@ -878,7 +881,7 @@ describe('FormController', () => {
       expect(state.fields.special.value).toBe('custom-init');
     });
 
-    it('falls back to FieldController when no fieldsMap entry matches', () => {
+    it('falls back to FieldController when no fieldsMap entry matches', async () => {
       const form = createFormWithCustomField();
       const ctrl = new FormController(form, noopSubmit, {
         fieldsMap: {},
@@ -890,7 +893,7 @@ describe('FormController', () => {
       expect(state.fields.special.value).toBe('custom-value');
     });
 
-    it('works without fieldsMap (all fields use FieldController)', () => {
+    it('works without fieldsMap (all fields use FieldController)', async () => {
       const form = createFormWithCustomField();
       const ctrl = new FormController(form, noopSubmit);
 
@@ -899,7 +902,7 @@ describe('FormController', () => {
       expect(state.fields.standard.value).toBe('hello');
     });
 
-    it('emits field:added for custom field types', () => {
+    it('emits field:added for custom field types', async () => {
       const form = createFormWithCustomField();
       const handler = vi.fn();
       const ctrl = new FormController(form, noopSubmit, {

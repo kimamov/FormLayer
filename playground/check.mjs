@@ -413,13 +413,13 @@ const scenarios = [
     checks: [
       {
         id: 'X1', roadmap: '03',
-        title: 'Passwords that don’t match show an error (integrator `Equals` validator)',
+        title: 'Passwords that don’t match show an error (`Equals`)',
         async run(page) {
           await page.fill('#password', 'abcdefgh');
           await page.fill('#password-repeat', 'abcdefgx');
           await page.keyboard.press('Tab');
           await wait(100);
-          return { pass: (await text(page, '#password-repeat-errors')) !== '', note: 'only via a workaround that reads the DOM' };
+          return { pass: (await text(page, '#password-repeat-errors')) !== '' };
         },
       },
       {
@@ -438,14 +438,14 @@ const scenarios = [
       },
       {
         id: 'X3', roadmap: '03',
-        title: 'An end date before the start date shows an error (integrator `DateNotBefore` validator)',
+        title: 'An end date before the start date shows an error (`DateNotBefore`)',
         async run(page) {
           await page.fill('#start-date', '2026-12-10');
           await page.fill('#end-date', '2026-12-01');
           await page.focus('#end-date');
           await page.keyboard.press('Tab');
           await wait(100);
-          return { pass: (await text(page, '#end-date-errors')) !== '', note: 'only via a workaround that reads the DOM' };
+          return { pass: (await text(page, '#end-date-errors')) !== '' };
         },
       },
       {

@@ -150,7 +150,7 @@ Supports custom validation, server error transformation, and error rendering hoo
 - **No native constraint stripping** — remove `required`, `pattern`, etc. yourself if needed.
 - **No debounced input validation** — call `validate()` when appropriate (typically on blur or commit).
 - **No checkbox/radio/file group handling** — implement in `readValue()` / `writeValue()` if needed.
-- **File validators** — `FieldController` passes `__files` to validators for file inputs; override `options.validate` or call `runValidators` with extra context if you need file-aware rules.
+- **File validators**: when the control is a file input, validators get its files as `ctx.files`, so `FileSize` and `MimeType` work even if `readValue()` returns a string.
 
 ## Registration
 

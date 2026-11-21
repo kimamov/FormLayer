@@ -168,6 +168,7 @@ interface FieldState {
   isDirty: boolean;
   isTouched: boolean;
   errors: string[];
+  isValidating: boolean;    // an async validator is running
 }
 
 interface FieldValidationResult {
@@ -180,6 +181,8 @@ interface FormState {
   isValid: boolean;
   isSubmitting: boolean;
   isDirty: boolean;
+  isValidating: boolean;    // some field waits for an async validator
+  formErrors: string[];     // errors from data-validate-form rules
   fields: Record<string, FieldState>;
 }
 ```

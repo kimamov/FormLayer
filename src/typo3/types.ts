@@ -7,11 +7,14 @@ import type {
   FormPluginFactory,
 } from '../forms/types';
 import type { CustomFieldsMap } from '../forms/create-field';
+import type { ValidationMessages } from '../forms/validation';
 import type { FormRegistry } from '../forms/registry';
 
 export interface Typo3FormsOptions {
   disableDefaultValidators?: boolean;
   additionalValidators?: Validator[];
+  /** Translations for validator message keys, e.g. rendered from TYPO3 XLIFF as JSON. */
+  validationMessages?: ValidationMessages;
   /** Extra custom field types registered globally before form init. */
   additionalFieldTypes?: CustomFieldsMap;
   additionalFormPlugins?: FormPluginFactory[];

@@ -18,7 +18,11 @@ import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
 import { createField, createFieldAsync, isLazyFactory, type AddFieldFromElementOptions, type CustomFieldsMap } from './create-field';
 import { mergeFieldsMap } from './field-types';
-import { valueToString } from './field-value';
+import { valueKey, valueToString } from './field-value';
+import { runRules, type ValidationMessages } from './validation';
+import { getValidator } from './validators/index';
+import { escapeHtml } from './html';
+import type { Validator, ValidatorRule } from './types';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -37,8 +41,14 @@ export interface FormControllerOptions {
    */
   onFormInvalid?: (detail: FormEventDetail) => void;
 
-  fieldsMap?: CustomFieldsMap
+  fieldsMap?: CustomFieldsMap;
+  /** Validators for this form only, looked up before the global registry. */
+  validators?: Validator[];
+  /** Translations for validator message keys in this form (see `setValidationMessages()`). */
+  messages?: ValidationMessages;
 }
+
+const FORM_ERRORS_SELECTOR = '[data-fl-form-errors]';
 
 export class FormController implements FormControllerApi, FormPluginHost {
   readonly id: string;
@@ -63,13 +73,23 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private _destroyed = false;
   private readonly pending = new Set<Promise<unknown>>();
   private readonly destroyCallbacks: Array<() => void> = [];
+  private readonly formRules: ValidatorRule[];
+  private readonly lastValues = new Map<string, string>();
+  private formErrors: string[] = [];
+  private formRulesRun = 0;
+  private readonly fieldContext = { getValue: (name: string) => this.fields.get(name)?.getState().value };
 
   constructor(formEl: HTMLFormElement, submitFn: FormSubmitFunction, options?: FormControllerOptions) {
     this.formEl = formEl;
     this.id = formEl.id;
     this.submitFn = submitFn;
     this.fieldSelector = options?.fieldSelector ?? SELECTORS.formField;
-    this.fieldOptions = options?.fieldOptions;
+    this.fieldOptions = {
+      ...options?.fieldOptions,
+      validators: [...(options?.validators ?? []), ...(options?.fieldOptions?.validators ?? [])],
+      messages: options?.fieldOptions?.messages ?? options?.messages,
+    };
+    this.formRules = this.parseFormRules();
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
     this.onFormInvalid = options?.onFormInvalid;
@@ -129,20 +149,25 @@ export class FormController implements FormControllerApi, FormPluginHost {
       isValid: this.computeIsValid(),
       isSubmitting: this._isSubmitting,
       isDirty: this.computeIsDirty(),
+      isValidating: Object.values(fields).some((f) => f.isValidating),
+      formErrors: [...this.formErrors],
       fields,
     };
   }
 
+  /**
+   * Validate every field and the form-level rules, waiting for async rules.
+   * Focuses the first invalid field, or the form error container when only
+   * form-level rules failed.
+   */
   async validate(): Promise<boolean> {
-    let firstInvalid: FormField | null = null;
+    const fields = [...this.fields.values()];
+    const [results] = await Promise.all([
+      Promise.all(fields.map((ctrl) => Promise.resolve(ctrl.validate()))),
+      this.validateFormRules(),
+    ]);
 
-    for (const ctrl of this.fields.values()) {
-      const result = ctrl.validate();
-      if (!result.isValid && !firstInvalid) {
-        firstInvalid = ctrl;
-      }
-    }
-
+    const firstInvalid = fields.find((_, i) => !results[i].isValid) ?? null;
     const isValid = this.computeIsValid();
     const detail: FormEventDetail = { formId: this.id, state: this.getState() };
     if (!isValid) {
@@ -152,6 +177,8 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
     if (firstInvalid) {
       firstInvalid.focus();
+    } else if (this.formErrors.length > 0) {
+      this.formErrorsElement()?.focus();
     }
 
     return isValid;
@@ -245,7 +272,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
     const field = createField(wrapper, {
       factory,
       customFields: this._fieldsMap,
-      fieldOptions: hasFieldOptions ? fieldOptions : undefined,
+      fieldOptions: hasFieldOptions ? { ...this.fieldOptions, ...fieldOptions } : this.fieldOptions,
     });
     this.addField(field);
     return field;
@@ -314,8 +341,9 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   private registerField(field: FormField, name: string): void {
-    field.connect((state) => this.handleFieldChange(state));
+    field.connect((state) => this.handleFieldChange(state), this.fieldContext);
     this.fields.set(name, field);
+    this.lastValues.set(name, valueKey(field.getState().value));
 
     const detail: FieldEventDetail = {
       formId: this.id,
@@ -326,6 +354,26 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   private handleFieldChange(state: FieldState): void {
+    this.emitFieldEvents(state);
+
+    // Only a changed value can affect other fields (async results re-notify with the same value).
+    const key = valueKey(state.value);
+    if (this.lastValues.get(state.name) === key) return;
+    this.lastValues.set(state.name, key);
+
+    // Re-validate fields whose rules refer to this one, once the user has been there.
+    for (const dependent of this.fields.values()) {
+      if (dependent.name === state.name || !dependent.dependencies?.includes(state.name)) continue;
+      const depState = dependent.getState();
+      if (!depState.isTouched && !depState.isDirty) continue;
+      void Promise.resolve(dependent.validate()).then(() => this.emitFieldEvents(dependent.getState()));
+    }
+
+    // Form-level errors clear as soon as the user fixes them.
+    if (this.formErrors.length > 0) void this.validateFormRules();
+  }
+
+  private emitFieldEvents(state: FieldState): void {
     const eventType: FormEventType = state.isValid ? 'field:valid' : 'field:invalid';
     const detail: FieldEventDetail = {
       formId: this.id,
@@ -334,6 +382,50 @@ export class FormController implements FormControllerApi, FormPluginHost {
     };
     this.eventBus.emit('field:change', detail);
     this.eventBus.emit(eventType, detail);
+  }
+
+  /** Run `data-validate-form` rules and render their errors into `[data-fl-form-errors]`. */
+  private async validateFormRules(): Promise<string[]> {
+    if (this.formRules.length === 0) return this.formErrors;
+    const run = ++this.formRulesRun;
+    const { errors, pending } = runRules(this.formRules, '', {
+      field: { name: '__form', element: this.formEl },
+      form: this.fieldContext,
+      files: [],
+      signal: this.abortController.signal,
+    }, {
+      validators: this.fieldOptions?.validators,
+      messages: this.fieldOptions?.messages,
+      getValidator,
+    });
+    const all = pending ? await pending : errors;
+    if (run === this.formRulesRun && !this._destroyed) {
+      this.formErrors = all;
+      this.renderFormErrors();
+    }
+    return all;
+  }
+
+  private formErrorsElement(): HTMLElement | null {
+    return this.formEl.querySelector<HTMLElement>(FORM_ERRORS_SELECTOR);
+  }
+
+  private renderFormErrors(): void {
+    const container = this.formErrorsElement();
+    if (!container) return;
+    container.innerHTML = this.formErrors.map((message) => `<p>${escapeHtml(message)}</p>`).join('');
+  }
+
+  private parseFormRules(): ValidatorRule[] {
+    const raw = this.formEl.getAttribute('data-validate-form');
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed as ValidatorRule[] : [];
+    } catch {
+      console.warn(`[FormLayer] Invalid data-validate-form JSON on form "${this.id}"`);
+      return [];
+    }
   }
 
   private createObserver(): MutationObserver {
@@ -488,6 +580,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
   }
 
   private computeIsValid(): boolean {
+    if (this.formErrors.length > 0) return false;
     for (const ctrl of this.fields.values()) {
       if (!ctrl.getState().isValid) return false;
     }

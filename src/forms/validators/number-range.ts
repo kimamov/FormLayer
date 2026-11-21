@@ -1,31 +1,16 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const numberRange: Validator = {
+export const numberRange = defineValidator({
   type: 'NumberRange',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+  options: { minimum: Number, maximum: Number },
+  validate(input, { minimum = -Infinity, maximum = Infinity }) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const customMsg = options.message as string | undefined;
+    if (value.length === 0) return VALID;
     const num = Number(value);
-    if (Number.isNaN(num)) {
-      return { valid: false, message: customMsg ?? 'Please enter a valid number.' };
-    }
-
-    const min = options['minimum'] != null ? Number(options['minimum']) : -Infinity;
-    const max = options['maximum'] != null ? Number(options['maximum']) : Infinity;
-
-    if (num < min) {
-      return { valid: false, message: customMsg ?? `The value must be at least ${min}.` };
-    }
-
-    if (num > max) {
-      return { valid: false, message: customMsg ?? `The value must be at most ${max}.` };
-    }
-
-    return { valid: true, message: '' };
+    if (Number.isNaN(num)) return invalid('Number', 'Please enter a valid number.');
+    if (num < minimum) return invalid('NumberRange.tooLow', `The value must be at least ${minimum}.`, { minimum, maximum });
+    if (num > maximum) return invalid('NumberRange.tooHigh', `The value must be at most ${maximum}.`, { minimum, maximum });
+    return VALID;
   },
-};
+});

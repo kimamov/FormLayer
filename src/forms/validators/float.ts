@@ -1,18 +1,11 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const float: Validator = {
+export const float = defineValidator({
   type: 'Float',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const valid = !Number.isNaN(Number(value.trim())) && value.trim() !== '';
-    return {
-      valid,
-      message: valid ? '' : (options.message as string) ?? 'Please enter a valid number.',
-    };
+  validate(input) {
+    const value = valueToString(input).trim();
+    if (value.length === 0 || !Number.isNaN(Number(value))) return VALID;
+    return invalid('Float', 'Please enter a valid number.');
   },
-};
+});

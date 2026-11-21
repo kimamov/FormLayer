@@ -1,37 +1,24 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const dateRange: Validator = {
-  type: 'DateRange',
-  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const customMsg = options.message as string | undefined;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return { valid: false, message: customMsg ?? 'Please enter a valid date.' };
-    }
-
-    const minStr = options['minimum'] as string | undefined;
-    const maxStr = options['maximum'] as string | undefined;
-
-    if (minStr) {
-      const min = new Date(minStr);
-      if (!Number.isNaN(min.getTime()) && date < min) {
-        return { valid: false, message: customMsg ?? `The date must not be before ${minStr}.` };
-      }
-    }
-
-    if (maxStr) {
-      const max = new Date(maxStr);
-      if (!Number.isNaN(max.getTime()) && date > max) {
-        return { valid: false, message: customMsg ?? `The date must not be after ${maxStr}.` };
-      }
-    }
-
-    return { valid: true, message: '' };
-  },
+const parse = (s: string | undefined) => {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
 };
+
+export const dateRange = defineValidator({
+  type: 'DateRange',
+  options: { minimum: String, maximum: String },
+  validate(input, { minimum, maximum }) {
+    const value = valueToString(input);
+    if (value.length === 0) return VALID;
+    const date = parse(value);
+    if (!date) return invalid('DateTime', 'Please enter a valid date.');
+    const min = parse(minimum);
+    if (min && date < min) return invalid('DateRange.tooEarly', `The date must not be before ${minimum}.`, { minimum, maximum });
+    const max = parse(maximum);
+    if (max && date > max) return invalid('DateRange.tooLate', `The date must not be after ${maximum}.`, { minimum, maximum });
+    return VALID;
+  },
+});

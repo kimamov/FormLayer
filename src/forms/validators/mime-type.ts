@@ -1,4 +1,4 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { isFileValue } from '../field-value';
 
 function matches(type: string, allowed: string): boolean {
@@ -9,37 +9,22 @@ function matches(type: string, allowed: string): boolean {
 
 /**
  * TYPO3 `MimeType`: every selected file must have one of `allowedMimeTypes`
- * (exact types or wildcards like `image/*`). Reads files from `options.__files`;
- * an empty file input is valid (combine with `NotEmpty` to require a file).
- * The browser-reported type is a hint only: the server must check the content.
+ * (exact types or wildcards like `image/*`). An empty file input is valid
+ * (combine with `NotEmpty` to require a file). The browser-reported type is a
+ * hint only: the server must check the content.
  */
-export const mimeType: Validator = {
+export const mimeType = defineValidator({
   type: 'MimeType',
-  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
-    const files = isFileValue(value) ? value : (options['__files'] as ArrayLike<File> | undefined);
-    if (!files || files.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const raw = options['allowedMimeTypes'];
-    const allowed = (Array.isArray(raw) ? raw : String(raw ?? '').split(','))
-      .map(String)
-      .filter((t) => t.trim() !== '');
-    if (allowed.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const customMsg = options.message as string | undefined;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+  options: { allowedMimeTypes: Array },
+  validate(value, { allowedMimeTypes = [] }, ctx) {
+    const files = isFileValue(value) ? value : ctx.files;
+    if (files.length === 0 || allowedMimeTypes.length === 0) return VALID;
+    for (const file of files) {
       const type = (file.type || '').toLowerCase();
-      if (!allowed.some((a) => matches(type, a))) {
-        return {
-          valid: false,
-          message: customMsg ?? `File "${file.name}" has a type that is not allowed.`,
-        };
+      if (!allowedMimeTypes.some((a) => matches(type, a))) {
+        return invalid('MimeType', `File "${file.name}" has a type that is not allowed.`, { fileName: file.name, allowedMimeTypes: allowedMimeTypes.join(', ') });
       }
     }
-    return { valid: true, message: '' };
+    return VALID;
   },
-};
+});

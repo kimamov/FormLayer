@@ -56,13 +56,13 @@ describe('FieldController', () => {
   registerDefaultValidators();
 
   describe('initialization', () => {
-    it('reads the field name from data-form-field', () => {
+    it('reads the field name from data-form-field', async () => {
       const wrapper = createFieldHTML({ name: 'firstName' });
       const ctrl = new FieldController(wrapper);
       expect(ctrl.name).toBe('firstName');
     });
 
-    it('sets initial state correctly', () => {
+    it('sets initial state correctly', async () => {
       const wrapper = createFieldHTML({ name: 'email', value: 'test@test.com' });
       const ctrl = new FieldController(wrapper);
       const state = ctrl.getState();
@@ -75,7 +75,7 @@ describe('FieldController', () => {
       expect(state.errors).toEqual([]);
     });
 
-    it('throws when no input is found', () => {
+    it('throws when no input is found', async () => {
       const wrapper = document.createElement('div');
       wrapper.setAttribute('data-form-field', 'empty');
       document.body.appendChild(wrapper);
@@ -83,7 +83,7 @@ describe('FieldController', () => {
       expect(() => new FieldController(wrapper)).toThrow('No input found');
     });
 
-    it('exposes element and inputElement', () => {
+    it('exposes element and inputElement', async () => {
       const wrapper = createFieldHTML({ name: 'test' });
       const ctrl = new FieldController(wrapper);
 
@@ -91,19 +91,19 @@ describe('FieldController', () => {
       expect(ctrl.inputElement.tagName).toMatch(/INPUT/i);
     });
 
-    it('reads fieldType from data-field-type', () => {
+    it('reads fieldType from data-field-type', async () => {
       const wrapper = createFieldHTML({ name: 'date', fieldType: 'datepicker' });
       const ctrl = new FieldController(wrapper);
       expect(ctrl.fieldType).toBe('datepicker');
     });
 
-    it('returns null fieldType when attribute is absent', () => {
+    it('returns null fieldType when attribute is absent', async () => {
       const wrapper = createFieldHTML({ name: 'basic' });
       const ctrl = new FieldController(wrapper);
       expect(ctrl.fieldType).toBeNull();
     });
 
-    it('removes native validation attributes', () => {
+    it('removes native validation attributes', async () => {
       const wrapper = createFieldHTML({ name: 'req', required: true });
       const ctrl = new FieldController(wrapper);
       expect(ctrl.inputElement.hasAttribute('required')).toBe(false);
@@ -111,20 +111,20 @@ describe('FieldController', () => {
   });
 
   describe('validation', () => {
-    it('validates NotEmpty rule', () => {
+    it('validates NotEmpty rule', async () => {
       const wrapper = createFieldHTML({
         name: 'required_field',
         validate: [{ type: 'NotEmpty' }],
       });
       const ctrl = new FieldController(wrapper);
 
-      const result = ctrl.validate();
+      const result = await ctrl.validate();
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('This field is required.');
       expect(ctrl.getState().isValid).toBe(false);
     });
 
-    it('validates passing NotEmpty rule', () => {
+    it('validates passing NotEmpty rule', async () => {
       const wrapper = createFieldHTML({
         name: 'name',
         value: 'John',
@@ -132,12 +132,12 @@ describe('FieldController', () => {
       });
       const ctrl = new FieldController(wrapper);
 
-      const result = ctrl.validate();
+      const result = await ctrl.validate();
       expect(result.isValid).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
-    it('validates multiple rules', () => {
+    it('validates multiple rules', async () => {
       const wrapper = createFieldHTML({
         name: 'email',
         value: 'ab',
@@ -148,13 +148,13 @@ describe('FieldController', () => {
         ],
       });
       const ctrl = new FieldController(wrapper);
-      const result = ctrl.validate();
+      const result = await ctrl.validate();
 
       expect(result.isValid).toBe(false);
       expect(result.errors.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('adds is-invalid CSS class on validation failure', () => {
+    it('adds is-invalid CSS class on validation failure', async () => {
       const wrapper = createFieldHTML({
         name: 'req',
         validate: [{ type: 'NotEmpty' }],
@@ -166,7 +166,7 @@ describe('FieldController', () => {
       expect(wrapper.classList.contains('is-invalid')).toBe(true);
     });
 
-    it('removes is-invalid CSS class on validation success', () => {
+    it('removes is-invalid CSS class on validation success', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         value: 'valid',
@@ -178,7 +178,7 @@ describe('FieldController', () => {
       expect(ctrl.inputElement.classList.contains('is-invalid')).toBe(false);
     });
 
-    it('sets aria-invalid attribute on failure', () => {
+    it('sets aria-invalid attribute on failure', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         validate: [{ type: 'NotEmpty' }],
@@ -189,7 +189,7 @@ describe('FieldController', () => {
       expect(ctrl.inputElement.getAttribute('aria-invalid')).toBe('true');
     });
 
-    it('renders error messages into errors element', () => {
+    it('renders error messages into errors element', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         validate: [{ type: 'NotEmpty' }],
@@ -201,7 +201,7 @@ describe('FieldController', () => {
       expect(errorsEl.innerHTML).toContain('This field is required.');
     });
 
-    it('uses errorsSelector to find the errors element', () => {
+    it('uses errorsSelector to find the errors element', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         validate: [{ type: 'NotEmpty' }],
@@ -221,7 +221,7 @@ describe('FieldController', () => {
       expect(customErrors.innerHTML).toContain('This field is required.');
     });
 
-    it('uses findErrorsElement override', () => {
+    it('uses findErrorsElement override', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         validate: [{ type: 'NotEmpty' }],
@@ -238,7 +238,7 @@ describe('FieldController', () => {
       expect(customErrors.innerHTML).toContain('This field is required.');
     });
 
-    it('uses renderError for each message', () => {
+    it('uses renderError for each message', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         value: 'ab',
@@ -260,7 +260,7 @@ describe('FieldController', () => {
       expect(errorsEl.innerHTML).toContain('data-index="1"');
     });
 
-    it('uses renderErrors as a full override', () => {
+    it('uses renderErrors as a full override', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         validate: [{ type: 'NotEmpty' }],
@@ -274,7 +274,7 @@ describe('FieldController', () => {
       expect(document.getElementById('field-input-errors')!.innerHTML).toBe('');
     });
 
-    it('skips validation when disabled', () => {
+    it('skips validation when disabled', async () => {
       const wrapper = createFieldHTML({
         name: 'hidden_field',
         validate: [{ type: 'NotEmpty' }],
@@ -282,13 +282,13 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
       ctrl.setEnabled(false);
 
-      const result = ctrl.validate();
+      const result = await ctrl.validate();
       expect(result.isValid).toBe(true);
     });
   });
 
   describe('setValue()', () => {
-    it('updates the value and triggers validation', () => {
+    it('updates the value and triggers validation', async () => {
       const wrapper = createFieldHTML({
         name: 'name',
         validate: [{ type: 'NotEmpty' }],
@@ -302,7 +302,7 @@ describe('FieldController', () => {
       expect(ctrl.getState().isValid).toBe(true);
     });
 
-    it('calls change callback after setValue', () => {
+    it('calls change callback after setValue', async () => {
       const wrapper = createFieldHTML({ name: 'test' });
       const ctrl = new FieldController(wrapper);
       const cb = vi.fn();
@@ -316,7 +316,7 @@ describe('FieldController', () => {
   });
 
   describe('setEnabled()', () => {
-    it('hides the wrapper when disabled', () => {
+    it('hides the wrapper when disabled', async () => {
       const wrapper = createFieldHTML({ name: 'toggle' });
       const ctrl = new FieldController(wrapper);
 
@@ -326,7 +326,7 @@ describe('FieldController', () => {
       expect((ctrl.inputElement as HTMLInputElement).disabled).toBe(true);
     });
 
-    it('shows the wrapper when re-enabled', () => {
+    it('shows the wrapper when re-enabled', async () => {
       const wrapper = createFieldHTML({ name: 'toggle' });
       const ctrl = new FieldController(wrapper);
 
@@ -338,7 +338,7 @@ describe('FieldController', () => {
       expect((ctrl.inputElement as HTMLInputElement).disabled).toBe(false);
     });
 
-    it('clears errors when disabled', () => {
+    it('clears errors when disabled', async () => {
       const wrapper = createFieldHTML({
         name: 'conditonal',
         validate: [{ type: 'NotEmpty' }],
@@ -352,7 +352,7 @@ describe('FieldController', () => {
       expect(ctrl.getState().errors).toEqual([]);
     });
 
-    it('is idempotent when called with same value', () => {
+    it('is idempotent when called with same value', async () => {
       const wrapper = createFieldHTML({ name: 'stable' });
       const ctrl = new FieldController(wrapper);
       const cb = vi.fn();
@@ -364,7 +364,7 @@ describe('FieldController', () => {
   });
 
   describe('setServerErrors()', () => {
-    it('applies server errors and marks field invalid', () => {
+    it('applies server errors and marks field invalid', async () => {
       const wrapper = createFieldHTML({ name: 'email', value: 'taken@test.com' });
       const ctrl = new FieldController(wrapper);
 
@@ -374,7 +374,7 @@ describe('FieldController', () => {
       expect(ctrl.getState().isTouched).toBe(true);
     });
 
-    it('server errors persist until value changes', () => {
+    it('server errors persist until value changes', async () => {
       const wrapper = createFieldHTML({
         name: 'email',
         value: 'taken@test.com',
@@ -383,18 +383,18 @@ describe('FieldController', () => {
       const ctrl = new FieldController(wrapper);
 
       ctrl.setServerErrors(['Already taken']);
-      let result = ctrl.validate();
+      let result = await ctrl.validate();
       expect(result.isValid).toBe(false);
       expect(result.errors).toContain('Already taken');
 
       ctrl.setValue('new@test.com');
-      result = ctrl.validate();
+      result = await ctrl.validate();
       expect(result.isValid).toBe(true);
     });
   });
 
   describe('reset()', () => {
-    it('resets state to initial values', () => {
+    it('resets state to initial values', async () => {
       const wrapper = createFieldHTML({
         name: 'field',
         value: 'dirty',
@@ -414,13 +414,13 @@ describe('FieldController', () => {
   });
 
   describe('destroy()', () => {
-    it('cleans up without errors', () => {
+    it('cleans up without errors', async () => {
       const wrapper = createFieldHTML({ name: 'cleanup' });
       const ctrl = new FieldController(wrapper);
       expect(() => ctrl.destroy()).not.toThrow();
     });
 
-    it('restores native validation attributes', () => {
+    it('restores native validation attributes', async () => {
       const wrapper = createFieldHTML({ name: 'req', required: true });
       const ctrl = new FieldController(wrapper);
       expect(ctrl.inputElement.hasAttribute('required')).toBe(false);
@@ -439,7 +439,7 @@ describe('FieldController', () => {
       expect(ctrl.getState().isDirty).toBe(true);
     });
 
-    it('marks touched and validates on blur', () => {
+    it('marks touched on blur but only validates once the field was edited', async () => {
       const wrapper = createFieldHTML({
         name: 'blurring',
         validate: [{ type: 'NotEmpty' }],
@@ -448,10 +448,14 @@ describe('FieldController', () => {
 
       ctrl.inputElement.dispatchEvent(new Event('blur'));
       expect(ctrl.getState().isTouched).toBe(true);
+      expect(ctrl.getState().isValid).toBe(true);
+
+      ctrl.inputElement.dispatchEvent(new Event('input'));
+      ctrl.inputElement.dispatchEvent(new Event('blur'));
       expect(ctrl.getState().isValid).toBe(false);
     });
 
-    it('validates on change event', () => {
+    it('validates on change event', async () => {
       const wrapper = createFieldHTML({
         name: 'changing',
         value: 'hello',
@@ -466,7 +470,7 @@ describe('FieldController', () => {
   });
 
   describe('select element', () => {
-    it('works with select elements', () => {
+    it('works with select elements', async () => {
       const wrapper = createFieldHTML({
         name: 'country',
         type: 'select',
@@ -484,7 +488,7 @@ describe('FieldController', () => {
   });
 
   describe('checkbox element', () => {
-    it('reads checked value for checkbox', () => {
+    it('reads checked value for checkbox', async () => {
       const wrapper = createFieldHTML({
         name: 'agree',
         type: 'checkbox',
@@ -494,7 +498,7 @@ describe('FieldController', () => {
       expect(ctrl.getState().value).toBe('yes');
     });
 
-    it('reads empty for unchecked checkbox', () => {
+    it('reads empty for unchecked checkbox', async () => {
       const wrapper = createFieldHTML({
         name: 'agree',
         type: 'checkbox',
@@ -505,7 +509,7 @@ describe('FieldController', () => {
   });
 
   describe('replaceInput()', () => {
-    it('swaps the internal input element', () => {
+    it('swaps the internal input element', async () => {
       const wrapper = createFieldHTML({ name: 'swap' });
       const ctrl = new FieldController(wrapper);
       const originalInput = ctrl.inputElement;

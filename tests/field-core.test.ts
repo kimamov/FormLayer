@@ -12,6 +12,7 @@ import { initField } from '../src/forms/init-field';
 import { html, raw } from '../src/forms/html';
 import { getValidator, registerDefaultValidators } from '../src/forms/validators';
 import type { FieldContext } from '../src/forms/base-field';
+import { detachedContext } from '../src/forms/validation';
 import type { FormSubmitFunction } from '../src/forms/types';
 
 registerDefaultValidators();
@@ -59,7 +60,7 @@ const ratingMarkup = `
   </fieldset>`;
 
 describe('defineField()', () => {
-  it('creates a working field from setup()', () => {
+  it('creates a working field from setup()', async () => {
     const wrapper = mount(ratingMarkup);
     const field = new RatingField(wrapper);
     expect(field.getState()).toMatchObject({ name: 'rating', value: '', isDirty: false, isTouched: false });
@@ -68,7 +69,7 @@ describe('defineField()', () => {
     expect(field.getState()).toMatchObject({ value: '2', isDirty: true, isTouched: true, isValid: true });
   });
 
-  it('is a class, so it can be registered directly', () => {
+  it('is a class, so it can be registered directly', async () => {
     expect(isLazyFactory(RatingField)).toBe(false);
     registerFieldType('rating', RatingField);
     const form = document.createElement('form');
@@ -80,14 +81,14 @@ describe('defineField()', () => {
     ctrl.destroy();
   });
 
-  it('validates with data-validate rules and renders errors', () => {
+  it('validates with data-validate rules and renders errors', async () => {
     const wrapper = mount(ratingMarkup);
     const field = new RatingField(wrapper);
-    expect(field.validate()).toEqual({ isValid: false, errors: ['Rate us'] });
+    expect(await field.validate()).toEqual({ isValid: false, errors: ['Rate us'] });
     expect(wrapper.querySelector('#rating-errors')!.textContent).toBe('Rate us');
   });
 
-  it('links errors to every element passed to setControl()', () => {
+  it('links errors to every element passed to setControl()', async () => {
     const wrapper = mount(ratingMarkup);
     const field = new RatingField(wrapper);
     const stars = wrapper.querySelectorAll('button');
@@ -99,7 +100,7 @@ describe('defineField()', () => {
     }
   });
 
-  it('input() validates only after a pause and only once touched', () => {
+  it('input() validates only after a pause and only once touched', async () => {
     vi.useFakeTimers();
     let ctxRef!: FieldContext;
     const Field = defineField({
@@ -124,7 +125,7 @@ describe('defineField()', () => {
     expect(field.getState().isValid).toBe(false);
   });
 
-  it('reset() writes the initial value unless the adapter has its own reset', () => {
+  it('reset() writes the initial value unless the adapter has its own reset', async () => {
     const wrapper = mount(ratingMarkup);
     const field = new RatingField(wrapper);
     field.setValue('2');
@@ -133,7 +134,7 @@ describe('defineField()', () => {
     expect(field.getState()).toMatchObject({ value: '', isDirty: false, isTouched: false });
   });
 
-  it('destroy() aborts the signal and calls the adapter destroy hook', () => {
+  it('destroy() aborts the signal and calls the adapter destroy hook', async () => {
     const destroyed = vi.fn();
     let signal!: AbortSignal;
     const Field = defineField({
@@ -149,7 +150,7 @@ describe('defineField()', () => {
     expect(destroyed).toHaveBeenCalledTimes(1);
   });
 
-  it('ctx.part() explains which part is missing', () => {
+  it('ctx.part() explains which part is missing', async () => {
     const Field = defineField({
       setup(ctx) {
         ctx.part('listbox');
@@ -159,7 +160,7 @@ describe('defineField()', () => {
     expect(() => new Field(mount('<div data-form-field="x"><input></div>'))).toThrow('data-fl-part="listbox"');
   });
 
-  it('works with initField() for standalone use', () => {
+  it('works with initField() for standalone use', async () => {
     const wrapper = mount(ratingMarkup);
     const field = initField(wrapper, { field: RatingField });
     expect(field.getState().name).toBe('rating');
@@ -167,7 +168,7 @@ describe('defineField()', () => {
 });
 
 describe('NativeField typed values', () => {
-  it('reads a checkbox group as string[]', () => {
+  it('reads a checkbox group as string[]', async () => {
     const wrapper = mount(`
       <fieldset data-form-field="i">
         <input type="checkbox" name="i[]" value="a" checked>
@@ -180,12 +181,12 @@ describe('NativeField typed values', () => {
     expect([...wrapper.querySelectorAll<HTMLInputElement>('input')].map((i) => i.checked)).toEqual([false, true, false]);
   });
 
-  it('treats a single checkbox named with [] as a group', () => {
+  it('treats a single checkbox named with [] as a group', async () => {
     const field = new NativeField(mount('<div data-form-field="t"><input type="checkbox" name="t[]" value="yes"></div>'));
     expect(field.getState().value).toEqual([]);
   });
 
-  it('reads a single checkbox and a radio group as string', () => {
+  it('reads a single checkbox and a radio group as string', async () => {
     const box = new NativeField(mount('<div data-form-field="c"><input type="checkbox" name="c" value="1" checked></div>'));
     expect(box.getState().value).toBe('1');
     const radios = new NativeField(mount(`
@@ -197,7 +198,7 @@ describe('NativeField typed values', () => {
     expect(radios.getState().value).toBe('a');
   });
 
-  it('reads a multi-select as string[]', () => {
+  it('reads a multi-select as string[]', async () => {
     const field = new NativeField(mount(`
       <div data-form-field="m"><select name="m" multiple>
         <option value="x" selected>X</option><option value="y">Y</option><option value="z" selected>Z</option>
@@ -207,7 +208,7 @@ describe('NativeField typed values', () => {
     expect(field.getState().value).toEqual(['y']);
   });
 
-  it('reads a file input as File[]', () => {
+  it('reads a file input as File[]', async () => {
     const wrapper = mount('<div data-form-field="f"><input type="file" name="f"></div>');
     const input = wrapper.querySelector('input')!;
     const file = new File(['x'], 'a.txt');
@@ -216,7 +217,7 @@ describe('NativeField typed values', () => {
     expect(field.getState().value).toEqual([file]);
   });
 
-  it('links a radio group error to every option', () => {
+  it('links a radio group error to every option', async () => {
     const wrapper = mount(`
       <fieldset data-form-field="r" data-validate='[{"type":"NotEmpty"}]'>
         <input type="radio" id="r1" name="r" value="a"><input type="radio" id="r2" name="r" value="b">
@@ -228,7 +229,7 @@ describe('NativeField typed values', () => {
     expect(wrapper.querySelector('#r2')!.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('starts with aria-invalid="false" and returns to it once valid', () => {
+  it('starts with aria-invalid="false" and returns to it once valid', async () => {
     const wrapper = mount(`<div data-form-field="n" data-validate='[{"type":"NotEmpty"}]'><input id="n" name="n"></div>`);
     const input = wrapper.querySelector('input')!;
     const field = new NativeField(wrapper);
@@ -242,7 +243,7 @@ describe('NativeField typed values', () => {
 });
 
 describe('setEnabled()', () => {
-  it('disables every control and restores only the ones it disabled', () => {
+  it('disables every control and restores only the ones it disabled', async () => {
     const wrapper = mount(`
       <div data-form-field="g">
         <input name="g" value="1">
@@ -265,26 +266,26 @@ describe('setEnabled()', () => {
 });
 
 describe('validators with typed values', () => {
-  it('NotEmpty treats an empty list as empty', () => {
+  it('NotEmpty treats an empty list as empty', async () => {
     const notEmpty = getValidator('NotEmpty')!;
-    expect(notEmpty.validate([], {})).toMatchObject({ valid: false });
-    expect(notEmpty.validate(['a'], {})).toMatchObject({ valid: true });
+    expect(notEmpty.validate([], {}, detachedContext())).toMatchObject({ valid: false });
+    expect(notEmpty.validate(['a'], {}, detachedContext())).toMatchObject({ valid: true });
   });
 
-  it('Count counts list values', () => {
+  it('Count counts list values', async () => {
     const count = getValidator('Count')!;
-    expect(count.validate(['a', 'b', 'c'], { maximum: 2 })).toMatchObject({ valid: false });
+    expect(count.validate(['a', 'b', 'c'], { maximum: 2 }, detachedContext())).toMatchObject({ valid: false });
   });
 
-  it('FileSize reads files from a File[] value', () => {
+  it('FileSize reads files from a File[] value', async () => {
     const fileSize = getValidator('FileSize')!;
     const big = new File([new Uint8Array(2048)], 'big.bin');
-    expect(fileSize.validate([big], { maximum: '1K' })).toMatchObject({ valid: false });
+    expect(fileSize.validate([big], { maximum: '1K' }, detachedContext())).toMatchObject({ valid: false });
   });
 
-  it('string validators get list values joined with commas', () => {
+  it('string validators get list values joined with commas', async () => {
     const length = getValidator('StringLength')!;
-    expect(length.validate(['ab', 'cd'], { maximum: 4 })).toMatchObject({ valid: false }); // "ab,cd"
+    expect(length.validate(['ab', 'cd'], { maximum: 4 }, detachedContext())).toMatchObject({ valid: false }); // "ab,cd"
   });
 });
 
@@ -295,13 +296,13 @@ describe('html``', () => {
     return div.innerHTML;
   };
 
-  it('escapes interpolated strings in text and attributes', () => {
+  it('escapes interpolated strings in text and attributes', async () => {
     const label = '<b>"Tom" & Jerry</b>';
     expect(render(html`<li title="${label}">${label}</li>`))
       .toBe('<li title="<b>&quot;Tom&quot; &amp; Jerry</b>">&lt;b&gt;"Tom" &amp; Jerry&lt;/b&gt;</li>');
   });
 
-  it('inserts nodes as nodes, keeping their identity', () => {
+  it('inserts nodes as nodes, keeping their identity', async () => {
     const icon = document.createElement('span');
     const onClick = vi.fn();
     icon.addEventListener('click', onClick);
@@ -312,7 +313,7 @@ describe('html``', () => {
     expect(onClick).toHaveBeenCalled();
   });
 
-  it('supports arrays, raw markup and skips null/false', () => {
+  it('supports arrays, raw markup and skips null/false', async () => {
     const items = ['a', 'b'].map((x) => html`<li>${x}</li>`);
     expect(render(html`<ul>${items}</ul>${null}${false}${raw('<hr>')}`)).toBe('<ul><li>a</li><li>b</li></ul><hr>');
   });

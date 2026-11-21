@@ -9,6 +9,21 @@ export {
   runValidators,
   runValidatorsAsync,
 } from './forms/validators';
+export {
+  defineValidator,
+  setValidationMessages,
+  resolveMessage,
+  invalid,
+  VALID,
+} from './forms/validation';
+export type {
+  ValidatorContext,
+  ValidationMessages,
+  ValidatorDefinition,
+  ValidatorOptions,
+  ValidatorOptionSchema,
+} from './forms/validation';
+export type { ValidateOn } from './forms/field-options';
 export { initField, initFieldAsync } from './forms/init-field';
 export type { InitFieldOptions } from './forms/init-field';
 export { createField, createFieldAsync, isLazyFactory, lazy } from './forms/create-field';
@@ -48,6 +63,7 @@ export type {
   FormState,
   FieldState,
   FieldValidationResult,
+  FieldFormContext,
   FormEventType,
   RegistryEventType,
   FieldEventDetail,

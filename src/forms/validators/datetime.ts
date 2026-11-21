@@ -1,19 +1,11 @@
-import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { defineValidator, invalid, VALID } from '../validation';
 import { valueToString } from '../field-value';
 
-export const dateTime: Validator = {
+export const dateTime = defineValidator({
   type: 'DateTime',
-  validate(input: FieldValue): ValidatorResult {
+  validate(input) {
     const value = valueToString(input);
-    if (value.length === 0) {
-      return { valid: true, message: '' };
-    }
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return { valid: false, message: 'Please enter a valid date.' };
-    }
-
-    return { valid: true, message: '' };
+    if (value.length === 0 || !Number.isNaN(new Date(value).getTime())) return VALID;
+    return invalid('DateTime', 'Please enter a valid date.');
   },
-};
+});
