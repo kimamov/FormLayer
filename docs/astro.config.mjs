@@ -29,6 +29,7 @@ export default defineConfig({
 					items: [
 						{ label: 'Validation', slug: 'guides/validation' },
 						{ label: 'Server Validation', slug: 'guides/server-validation' },
+						{ label: 'Conditional Fields', slug: 'guides/conditional-fields' },
 						{ label: 'Error Rendering', slug: 'guides/error-rendering' },
 						{ label: 'Events & Hooks', slug: 'guides/events' },
 						{ label: 'Loading State', slug: 'guides/loading-state' },

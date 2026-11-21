@@ -178,6 +178,11 @@ Forms without this checkbox use the standard full-page POST flow.
 
 This mirrors the frontend `ClientVariantsPlugin` behavior. The middleware additionally strips validation errors for disabled fields so hidden conditional fields do not block submission.
 
+To match the frontend exactly:
+
+- **Containers:** a `clientVariants` condition on a section or fieldset must disable every element inside it when it fails, the way the frontend hides the whole group.
+- **Hidden means empty:** a disabled element must count as empty in other elements' conditions, so chains of conditions settle the same way on both sides. The `__clientVariantsDisabled` field sent by the browser lists the fields it hid, which is useful for logging differences, but the server should evaluate the conditions itself.
+
 ## ViewHelpers
 
 | ViewHelper | Purpose |

@@ -120,7 +120,7 @@ import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
 registerClientVariantsPlugin();
 ```
 
-The `ClientVariantsPlugin` enables/disables fields based on conditions evaluated against other field values — replicating TYPO3's server-side variant logic on the client.
+The `ClientVariantsPlugin` enables/disables fields based on conditions evaluated against other field values — replicating TYPO3's server-side variant logic on the client. Conditions also work on containers (a fieldset hides a whole group), hidden fields count as empty so chained conditions settle, and conditions are evaluated before first paint. See [Conditional Fields](/guides/conditional-fields/) for the full guide.
 
 ```html
 <form id="registration">

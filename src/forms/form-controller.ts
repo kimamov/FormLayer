@@ -316,6 +316,15 @@ export class FormController implements FormControllerApi, FormPluginHost {
     return [...this.fields.keys()];
   }
 
+  getFieldsIn(element: Element): string[] {
+    const names: string[] = [];
+    for (const [name, field] of this.fields) {
+      const wrapper = (field as { element?: HTMLElement }).element;
+      if (wrapper && (wrapper === element || element.contains(wrapper))) names.push(name);
+    }
+    return names;
+  }
+
   setFieldEnabled(name: string, enabled: boolean): void {
     const ctrl = this.fields.get(name);
     if (ctrl) ctrl.setEnabled(enabled);

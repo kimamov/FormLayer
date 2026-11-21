@@ -266,10 +266,6 @@ const scenarios = [
           await page.fill('#billing-postal-code', '00000');
           await page.fill('#billing-city', 'Vienna');
           await page.selectOption('#billing-country', 'AT');
-          // Shipping fields are required while A2 fails, so fill them too.
-          await page.fill('#shipping-name', 'Ada Lovelace');
-          await page.fill('#shipping-address', '12 Example Street');
-          await page.fill('#shipping-city', 'Vienna');
           await submit(page);
           return { pass: await waitForText(page, '#billing-postal-code-errors', 'deliver') };
         },
