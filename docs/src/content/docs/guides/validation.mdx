@@ -253,7 +253,7 @@ When only form-level rules fail, submitting moves focus to that container. Its e
 
 ## Server-only rules
 
-Mark a rule `"server": true` when it can only be checked on the server (for example "email already registered"). It is skipped on the client without a warning, and the server's error is shown after submit. Rules of a type that has no client validator are treated the same way.
+Mark a rule `"server": true` when it can only be checked on the server (for example "email already registered"). It is skipped on the client without a warning, and the server's error is shown after submit. Rules of a type that has no client validator are treated the same way. To check them while the user fills in the form, turn on [server validation](/guides/server-validation/).
 
 ```html
 <div data-form-field="email" data-validate='[{"type":"NotEmpty"},{"type":"EmailAddress"},{"type":"UniqueEmail","server":true}]'>

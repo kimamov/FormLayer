@@ -13,7 +13,7 @@ import type { FieldOptions } from './field-options';
 import { FieldEmitter } from './field-emitter';
 import { FieldErrorPresenter } from './field-error-presenter';
 import { getValidator } from './validators/index';
-import { runRules, ruleDependencies, type ValidatorContext } from './validation';
+import { runRules, ruleDependencies, isServerOnlyRule, type ValidatorContext } from './validation';
 import { type FieldValue, isFileValue, valueKey } from './field-value';
 
 export type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -113,6 +113,18 @@ export abstract class BaseField implements DomFormField {
     return this._dependencies;
   }
 
+  /** True if some rule can only be checked by the server (`"server": true` or no client validator). */
+  get hasServerRules(): boolean {
+    const find = (type: string) => this.options.validators?.find((v) => v.type === type) ?? getValidator(type);
+    return this.rules.some((rule) => isServerOnlyRule(rule, find));
+  }
+
+  /** Mark the field as waiting for a server check. Does not notify the form. */
+  setValidating(validating: boolean): void {
+    if (!this._initialized) return;
+    this._state = { ...this._state, isValidating: validating };
+  }
+
   /** `data-validate-on` on the wrapper, else the `validateOn` option, else `blur`. */
   private get trigger(): 'blur' | 'change' | 'submit' {
     const attr = this.wrapper.getAttribute('data-validate-on');
@@ -203,7 +215,7 @@ export abstract class BaseField implements DomFormField {
     this.adapter.write(value);
     this._state.isDirty = true;
     this._state.isTouched = true;
-    void this.validate();
+    void this.runValidation(true);
     this.notifyChange();
   }
 
@@ -214,6 +226,14 @@ export abstract class BaseField implements DomFormField {
    * one, and stale results are ignored.
    */
   validate(): Promise<FieldValidationResult> {
+    return this.runValidation(false);
+  }
+
+  /**
+   * @param fromUser The run was caused by user interaction or `setValue()`: the
+   *   form is told the result, so it can follow up (for example with a server check).
+   */
+  private runValidation(fromUser: boolean): Promise<FieldValidationResult> {
     this.validationAbort?.abort();
     this.validationAbort = null;
     const run = ++this.validationRun;
@@ -235,8 +255,16 @@ export abstract class BaseField implements DomFormField {
     const abort = new AbortController();
     this.validationAbort = abort;
 
+    const report = (result: FieldValidationResult): FieldValidationResult => {
+      if (fromUser) this.form?.validated?.(this.name, result);
+      return result;
+    };
+
+    // Server-only forms skip client rules; the server reports instead.
+    const rules = this.form?.clientRules === false ? [] : this.rules;
+
     const defaultValidate = (): FieldValidationResult | Promise<FieldValidationResult> => {
-      const { errors, pending } = runRules(this.rules, value, this.validatorContext(value, abort.signal), {
+      const { errors, pending } = runRules(rules, value, this.validatorContext(value, abort.signal), {
         validators: this.options.validators,
         messages: this.options.messages,
         getValidator,
@@ -248,12 +276,12 @@ export abstract class BaseField implements DomFormField {
     };
 
     const outcome = this.options.validate
-      ? this.options.validate(value, this.rules, defaultValidate)
+      ? this.options.validate(value, rules, defaultValidate)
       : defaultValidate();
 
     if (!(outcome instanceof Promise)) {
       this.applyResult(value, outcome, false);
-      return Promise.resolve(outcome);
+      return Promise.resolve(report(outcome));
     }
 
     if (!this._state.isValidating) this.applyResult(value, this._state, true);
@@ -262,7 +290,7 @@ export abstract class BaseField implements DomFormField {
       this.validationAbort = null;
       this.applyResult(value, result, false);
       this.notifyChange();
-      return result;
+      return report(result);
     });
   }
 
@@ -432,7 +460,7 @@ export abstract class BaseField implements DomFormField {
     this.clearDebounce();
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
-      if (this.trigger === 'change' || this.showsErrors) void this.validate();
+      if (this.trigger === 'change' || this.showsErrors) void this.runValidation(true);
       this.notifyChange();
     }, this.options.debounceMs ?? DEBOUNCE_MS);
   }
@@ -441,7 +469,7 @@ export abstract class BaseField implements DomFormField {
     this.clearDebounce();
     this._state.isDirty = true;
     this._state.isTouched = true;
-    if (this.trigger !== 'submit' || this.showsErrors) void this.validate();
+    if (this.trigger !== 'submit' || this.showsErrors) void this.runValidation(true);
     this.notifyChange();
   }
 
@@ -452,7 +480,7 @@ export abstract class BaseField implements DomFormField {
     const unchanged = this.lastValidatedKey !== null && valueKey(this.adapter.read()) === this.lastValidatedKey;
     // Validate on leaving only if the user edited the field (web.dev timing guidance), and
     // not again if nothing changed since the last run (avoids duplicate async requests).
-    if (this.trigger !== 'submit' && edited && !unchanged) void this.validate();
+    if (this.trigger !== 'submit' && edited && !unchanged) void this.runValidation(true);
     this.notifyChange();
   }
 

@@ -24,6 +24,13 @@ export type {
   ValidatorOptionSchema,
 } from './forms/validation';
 export type { ValidateOn } from './forms/field-options';
+export type {
+  ServerValidationMode,
+  ServerValidationOptions,
+  ServerValidationRequest,
+  ServerValidationResult,
+  ServerValidationErrorDetail,
+} from './forms/server-validation';
 export { initField, initFieldAsync } from './forms/init-field';
 export type { InitFieldOptions } from './forms/init-field';
 export { createField, createFieldAsync, isLazyFactory, lazy } from './forms/create-field';

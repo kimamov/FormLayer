@@ -8,6 +8,7 @@ import type {
 } from '../forms/types';
 import type { CustomFieldsMap } from '../forms/create-field';
 import type { ValidationMessages } from '../forms/validation';
+import type { ServerValidationOptions } from '../forms/server-validation';
 import type { FormRegistry } from '../forms/registry';
 
 export interface Typo3FormsOptions {
@@ -15,6 +16,11 @@ export interface Typo3FormsOptions {
   additionalValidators?: Validator[];
   /** Translations for validator message keys, e.g. rendered from TYPO3 XLIFF as JSON. */
   validationMessages?: ValidationMessages;
+  /**
+   * Server validation while the user fills in the form. Forms opt in with
+   * `mode` or `data-server-validation="client+server|server"` on the `<form>`.
+   */
+  serverValidation?: ServerValidationOptions;
   /** Extra custom field types registered globally before form init. */
   additionalFieldTypes?: CustomFieldsMap;
   additionalFormPlugins?: FormPluginFactory[];

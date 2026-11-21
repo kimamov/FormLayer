@@ -22,7 +22,13 @@ import { valueKey, valueToString } from './field-value';
 import { runRules, type ValidationMessages } from './validation';
 import { getValidator } from './validators/index';
 import { escapeHtml } from './html';
-import type { Validator, ValidatorRule } from './types';
+import type { FieldFormContext, FieldValidationResult, Validator, ValidatorRule } from './types';
+import {
+  ServerValidationScheduler,
+  resolveServerValidationMode,
+  type ServerValidationMode,
+  type ServerValidationOptions,
+} from './server-validation';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -44,6 +50,12 @@ export interface FormControllerOptions {
   fieldsMap?: CustomFieldsMap;
   /** Validators for this form only, looked up before the global registry. */
   validators?: Validator[];
+  /**
+   * Opt-in server validation while the user fills in the form. The core
+   * schedules the checks; `validate` is the transport. Off unless `mode` (or
+   * `data-server-validation` on the form) is `client+server` or `server`.
+   */
+  serverValidation?: ServerValidationOptions;
   /** Translations for validator message keys in this form (see `setValidationMessages()`). */
   messages?: ValidationMessages;
 }
@@ -75,9 +87,12 @@ export class FormController implements FormControllerApi, FormPluginHost {
   private readonly destroyCallbacks: Array<() => void> = [];
   private readonly formRules: ValidatorRule[];
   private readonly lastValues = new Map<string, string>();
-  private formErrors: string[] = [];
+  private clientFormErrors: string[] = [];
+  private serverFormErrors: string[] = [];
+  private readonly serverMode: ServerValidationMode;
+  private readonly serverScheduler: ServerValidationScheduler | null;
   private formRulesRun = 0;
-  private readonly fieldContext = { getValue: (name: string) => this.fields.get(name)?.getState().value };
+  private readonly fieldContext: FieldFormContext = this.createFieldContext();
 
   constructor(formEl: HTMLFormElement, submitFn: FormSubmitFunction, options?: FormControllerOptions) {
     this.formEl = formEl;
@@ -90,6 +105,18 @@ export class FormController implements FormControllerApi, FormPluginHost {
       messages: options?.fieldOptions?.messages ?? options?.messages,
     };
     this.formRules = this.parseFormRules();
+    this.serverMode = resolveServerValidationMode(formEl, options?.serverValidation);
+    this.serverScheduler = this.serverMode === 'client' || !options?.serverValidation
+      ? null
+      : new ServerValidationScheduler(options.serverValidation, {
+        formEl,
+        field: (name) => this.fields.get(name),
+        applyFormErrors: (errors) => {
+          this.serverFormErrors = errors;
+          this.renderFormErrors();
+        },
+      });
+
     this.loadingStateOptions = options?.loadingState ?? {};
     this.onLoadingStateChange = options?.onLoadingStateChange;
     this.onFormInvalid = options?.onFormInvalid;
@@ -150,7 +177,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
       isSubmitting: this._isSubmitting,
       isDirty: this.computeIsDirty(),
       isValidating: Object.values(fields).some((f) => f.isValidating),
-      formErrors: [...this.formErrors],
+      formErrors: this.formErrors,
       fields,
     };
   }
@@ -198,6 +225,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
       this.setSubmitting(false, this._activeSubmitter);
     }
     this.abortController.abort();
+    this.serverScheduler?.cancel();
     this.observer.disconnect();
     for (const plugin of this.formPlugins) {
       plugin.destroy();
@@ -386,7 +414,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
   /** Run `data-validate-form` rules and render their errors into `[data-fl-form-errors]`. */
   private async validateFormRules(): Promise<string[]> {
-    if (this.formRules.length === 0) return this.formErrors;
+    if (this.formRules.length === 0 || this.serverMode === 'server') return this.clientFormErrors;
     const run = ++this.formRulesRun;
     const { errors, pending } = runRules(this.formRules, '', {
       field: { name: '__form', element: this.formEl },
@@ -400,10 +428,43 @@ export class FormController implements FormControllerApi, FormPluginHost {
     });
     const all = pending ? await pending : errors;
     if (run === this.formRulesRun && !this._destroyed) {
-      this.formErrors = all;
+      this.clientFormErrors = all;
       this.renderFormErrors();
     }
     return all;
+  }
+
+  /** What fields see of the form: other values, whether to run client rules, and a hook after they validate. */
+  private createFieldContext(): FieldFormContext {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const controller = this;
+    return {
+      getValue: (name) => controller.fields.get(name)?.getState().value,
+      get clientRules() {
+        return controller.serverMode === 'server' ? false : undefined;
+      },
+      validated: (name, result) => controller.handleFieldValidated(name, result),
+    };
+  }
+
+  /** Client form-rule errors followed by form-level errors from server checks. */
+  private get formErrors(): string[] {
+    return [...this.clientFormErrors, ...this.serverFormErrors];
+  }
+
+  /** The mode in effect for this form (`data-server-validation` or the option). */
+  get serverValidationMode(): ServerValidationMode {
+    return this.serverMode;
+  }
+
+  /** A field finished validating because of the user: follow up with a server check if the mode asks for it. */
+  private handleFieldValidated(name: string, result: FieldValidationResult): void {
+    const scheduler = this.serverScheduler;
+    const field = this.fields.get(name);
+    if (!scheduler || !field || this._isSubmitting) return;
+    if (this.serverMode === 'server' || (result.isValid && field.hasServerRules)) {
+      scheduler.request(name);
+    }
   }
 
   private formErrorsElement(): HTMLElement | null {
@@ -478,7 +539,10 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
         try {
           await this.ready;
-          const isValid = skipValidation || await this.validate();
+          // Server checks in flight are superseded by the submit, which the server validates anyway.
+          this.serverScheduler?.cancel();
+          // In `server` mode there are no client rules: the submit response reports the errors.
+          const isValid = skipValidation || this.serverMode === 'server' || await this.validate();
 
           if (isValid) {
             const formData = new FormData(this.formEl, submitter ?? undefined);

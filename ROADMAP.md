@@ -45,7 +45,7 @@ Milestones 5 and 7 can run in parallel with 2–4.
 
 [`playground/`](playground/) holds server-rendered form scenarios: contact, address, conditional fields, repeatable group, cross-field rules, multistep and widgets. A mock TYPO3-style backend and a Playwright capability check (`npm run playground:check`) go with them. Every milestone lists the checks it must turn green.
 
-The baseline was **16 of 40 checks passing** on 0.3.x; the 0.4 fixes bring it to **23 of 40**, the v2 field core to **25 of 40**, the validation pipeline to **29 of 40** ([CAPABILITIES.md](playground/CAPABILITIES.md), analysis in [FINDINGS.md](playground/FINDINGS.md)). Milestones 8 and 9 came out of this.
+The baseline was **16 of 40 checks passing** on 0.3.x; the 0.4 fixes bring it to **23 of 40**, the v2 field core to **25 of 40**, the validation pipeline to **29 of 40**, and with server validation (3 new checks) it is **32 of 43** ([CAPABILITIES.md](playground/CAPABILITIES.md), analysis in [FINDINGS.md](playground/FINDINGS.md)). Milestones 8 and 9 came out of this.
 
 ---
 
