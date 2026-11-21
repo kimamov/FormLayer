@@ -13,6 +13,17 @@ export { initField, initFieldAsync } from './forms/init-field';
 export type { InitFieldOptions } from './forms/init-field';
 export { createField, createFieldAsync, isLazyFactory, lazy } from './forms/create-field';
 export type { CustomFieldsMap, CreateFieldOptions, AddFieldFromElementOptions, LazyFieldLoader } from './forms/create-field';
+export { defineField } from './forms/define-field';
+export type { FieldDefinition, DefinedFieldClass } from './forms/define-field';
+export { BaseField } from './forms/base-field';
+export type { FieldAdapter, FieldContext, FormControl } from './forms/base-field';
+export { NativeField } from './forms/native-field';
+export { FieldController } from './forms/field-controller';
+export { html, raw, escapeHtml } from './forms/html';
+export type { HtmlValue } from './forms/html';
+export { valueToString, valueToList, isEmptyValue, isFileValue } from './forms/field-value';
+export type { FieldValue } from './forms/field-value';
+/** @deprecated Use `defineField()`. */
 export { AbstractDomFormField } from './forms/abstract-dom-field';
 export type { AbstractDomFieldOptions } from './forms/abstract-dom-field';
 export { FieldEmitter } from './forms/field-emitter';

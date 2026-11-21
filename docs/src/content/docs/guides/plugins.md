@@ -9,7 +9,7 @@ FormLayer supports two extension mechanisms: **custom field types** (via `fields
 
 Custom field types replace the default `FieldController` for specific `data-field-type` values. Each custom type implements the [`FormField`](/reference/types/#formfield-interface) interface.
 
-For DOM-backed widgets (hidden native control + custom UI), extend [`AbstractDomFormField`](/reference/abstract-dom-field/) from `formlayer` — it provides validation, error rendering, server errors, enable/disable, and field events. Built-in plugins (combobox, datepicker) use this base class. See [Creating Custom Fields](/guides/custom-fields/) for a step-by-step **image input with preview** tutorial.
+For DOM-backed widgets (hidden native control + custom UI), use [`defineField()`](/reference/define-field/) from `formlayer`: the shared field core provides validation, error rendering, server errors, enable/disable, and field events. The datepicker and ALTCHA plugins are built this way. See [Creating Custom Fields](/guides/custom-fields/) for a step-by-step **image input with preview** tutorial.
 
 ### Registering Custom Fields
 
@@ -55,7 +55,7 @@ Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-p
 npm install formlayer-plugin-combobox
 ```
 
-Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission. Implemented with [`AbstractDomFormField`](/reference/abstract-dom-field/) — the hidden `<select>` holds the canonical value while the text input is the active control.
+Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission. The hidden `<select>` holds the canonical value while the text input is the active control. (The combobox still uses the deprecated `AbstractDomFormField`; its rebuild on `defineField()` is tracked in #12.)
 
 ```html
 <div data-form-field="country" data-field-type="combobox"
@@ -159,57 +159,41 @@ When `accountType` is not `"business"`, the `companyName` and `taxId` fields are
 
 ## Creating a Custom Field Type
 
-**Recommended:** extend `AbstractDomFormField` and implement three hooks — `mount()`, `readValue()`, and `writeValue()`:
+Use `defineField()`: return how to read and write the value, and report user changes with `ctx.commit()`:
 
 ```typescript
-import { AbstractDomFormField } from 'formlayer';
+import { defineField } from 'formlayer';
 
-export default class ToggleField extends AbstractDomFormField {
-  private hiddenInput!: HTMLInputElement;
-  private toggle!: HTMLButtonElement;
+export default defineField({
+  setup(ctx) {
+    const hidden = ctx.control<HTMLInputElement>();
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'toggle-btn';
+    toggle.setAttribute('aria-pressed', String(hidden.value === 'on'));
+    toggle.textContent = ctx.wrapper.querySelector('label')?.textContent ?? 'Toggle';
 
-  protected mount(): void {
-    this.hiddenInput = this.wrapper.querySelector('input')!;
-    this.toggle = document.createElement('button');
-    this.toggle.type = 'button';
-    this.toggle.className = 'toggle-btn';
-    this.toggle.textContent = this.readValue() === 'on' ? 'ON' : 'OFF';
+    const show = () => toggle.setAttribute('aria-pressed', String(hidden.value === 'on'));
+    toggle.addEventListener('click', () => {
+      hidden.value = hidden.value === 'on' ? 'off' : 'on';
+      show();
+      ctx.commit();
+    }, { signal: ctx.signal });
 
-    this.toggle.addEventListener('click', () => {
-      const next = this.readValue() === 'on' ? 'off' : 'on';
-      this.setValue(next);
-      this.toggle.textContent = next === 'on' ? 'ON' : 'OFF';
-    }, { signal: this.signal });
+    hidden.insertAdjacentElement('afterend', toggle);
+    ctx.setControl(toggle);
 
-    this.hiddenInput.hidden = true;
-    this.wrapper.appendChild(this.toggle);
-    this.setControlElement(this.hiddenInput);
-  }
-
-  protected readValue(): string {
-    return this.hiddenInput.value;
-  }
-
-  protected writeValue(value: string): void {
-    this.hiddenInput.value = value;
-    this.toggle.textContent = value === 'on' ? 'ON' : 'OFF';
-  }
-
-  protected onReset(): void {
-    this.hiddenInput.value = this.hiddenInput.defaultValue;
-    this.toggle.textContent = this.readValue() === 'on' ? 'ON' : 'OFF';
-  }
-
-  protected onDestroy(): void {
-    this.toggle.remove();
-    this.hiddenInput.hidden = false;
-  }
-
-  protected focusControl(): void {
-    this.toggle.focus();
-  }
-}
+    return {
+      read: () => hidden.value,
+      write: (value) => { hidden.value = String(value); show(); },
+      reset: () => { hidden.value = hidden.defaultValue; show(); },
+      destroy: () => toggle.remove(),
+    };
+  },
+});
 ```
+
+See [Creating Custom Fields](/guides/custom-fields/) for the full walkthrough.
 
 Register and use it:
 

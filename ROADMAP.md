@@ -16,6 +16,12 @@ Tracking issue: [#5](https://github.com/kimamov/FormLayer/issues/5). Each milest
 4. **One way to write a field, one way to configure one.** New fields use `defineField()`. Existing fields are configured with options at registration. Subclassing is not public API.
 5. **No feature soup.** We take a few ideas from other libraries on purpose (see [Inspiration](#inspiration)) and leave the rest.
 
+### Settled design questions (November 2026)
+
+- **Typed field values.** `FieldState.value` becomes `FieldValue = string | string[] | File[]`: multi-selects and checkbox groups give `string[]`, file inputs give `File[]`. This is a breaking change for validators and plugins that read values, accepted as part of v2 (milestone 1).
+- **Repeatable groups are a plugin.** They ship as a dependency-free `formlayer-plugin-repeatable` package, like client variants, not in core (milestone 9).
+- **TYPO3 server validation is built client-first.** The client transport is built and tested against the playground's mock backend. The validate-only branch of the sitepackage's PHP middleware follows later, outside this repository (milestone 4).
+
 ---
 
 ## Milestones
@@ -39,7 +45,7 @@ Milestones 5 and 7 can run in parallel with 2–4.
 
 [`playground/`](playground/) holds server-rendered form scenarios: contact, address, conditional fields, repeatable group, cross-field rules, multistep and widgets. A mock TYPO3-style backend and a Playwright capability check (`npm run playground:check`) go with them. Every milestone lists the checks it must turn green.
 
-The baseline was **16 of 40 checks passing** on 0.3.x; the 0.4 fixes bring it to **23 of 40** ([CAPABILITIES.md](playground/CAPABILITIES.md), analysis in [FINDINGS.md](playground/FINDINGS.md)). Milestones 8 and 9 came out of this.
+The baseline was **16 of 40 checks passing** on 0.3.x; the 0.4 fixes bring it to **23 of 40**, the v2 field core to **25 of 40** ([CAPABILITIES.md](playground/CAPABILITIES.md), analysis in [FINDINGS.md](playground/FINDINGS.md)). Milestones 8 and 9 came out of this.
 
 ---
 
@@ -70,16 +76,17 @@ Housekeeping in the same release:
 
 Today `FieldController` and `AbstractDomFormField` each implement validation, server errors, enable/disable and reset (about 200 duplicated lines), and they have already drifted apart. Writing a custom field means knowing a two-phase `init()`, `!` and `declare` on class fields, `setControlElement()`, and the right order of `markDirty` / `markTouched` / `validate` / `notifyChange`.
 
-v2 has a single internal `BaseField`. The native input/select/textarea handling becomes a thin adapter on top of it. Authors write fields like this:
+v2 has a single `BaseField`. The native input/select/textarea handling (`NativeField`) is a thin adapter on top of it. Authors write fields like this (built in #8):
 
 ```ts
 import { defineField } from 'formlayer';
 
 export default defineField({
   setup(ctx) {
-    const input = ctx.part<HTMLInputElement>('input');    // [data-fl-part="input"], or the first control
-    input.addEventListener('input', () => ctx.commit(), { signal: ctx.signal });
-    input.addEventListener('blur', () => ctx.touch(), { signal: ctx.signal });
+    const input = ctx.control<HTMLInputElement>();        // or ctx.part('name') for [data-fl-part="name"]
+    input.addEventListener('input', () => ctx.input(), { signal: ctx.signal });   // typing
+    input.addEventListener('change', () => ctx.commit(), { signal: ctx.signal }); // committed value
+    input.addEventListener('blur', () => ctx.touch(), { signal: ctx.signal });    // left the field
 
     return {
       read: () => input.value,
@@ -217,6 +224,7 @@ Playwright tests cover keyboard and ARIA behaviour.
 
 ## 9 · Repeatable field groups
 
+- Ships as the dependency-free `formlayer-plugin-repeatable` package.
 - Built-in add and remove from a `<template>`, numbering, min/max, focus and announcements.
 - The group registers as a field, so `Count` rules and group-level server errors have a place to render.
 - Replaces the 38 lines of integrator code in the playground.

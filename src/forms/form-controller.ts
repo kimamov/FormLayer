@@ -18,6 +18,7 @@ import type { FieldControllerOptions } from './field-controller';
 import { EventBus } from './events';
 import { createField, createFieldAsync, isLazyFactory, type AddFieldFromElementOptions, type CustomFieldsMap } from './create-field';
 import { mergeFieldsMap } from './field-types';
+import { valueToString } from './field-value';
 
 const DEFAULT_SUBMIT_SELECTOR = 'button[type="submit"], input[type="submit"]';
 const DEFAULT_LOADING_ATTRIBUTE = 'data-loading';
@@ -210,8 +211,10 @@ export class FormController implements FormControllerApi, FormPluginHost {
     await this.track(Promise.resolve(plugin.init(this.formEl, this)));
   }
 
+  /** The field's value as one string (lists joined with commas), for conditions and plugins. */
   getFieldValue(name: string): string | undefined {
-    return this.fields.get(name)?.getState().value;
+    const value = this.fields.get(name)?.getState().value;
+    return value === undefined ? undefined : valueToString(value);
   }
 
   getFieldNames(): string[] {

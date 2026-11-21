@@ -1,8 +1,10 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { valueToString } from '../field-value';
 
 export const stringLength: Validator = {
   type: 'StringLength',
-  validate(value: string, options: Record<string, unknown>): ValidatorResult {
+  validate(input: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const value = valueToString(input);
     const min = Number(options['minimum'] ?? 0);
     const max = Number(options['maximum'] ?? Infinity);
     const customMsg = options.message as string | undefined;

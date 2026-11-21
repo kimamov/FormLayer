@@ -1,4 +1,5 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
+import { isFileValue } from '../field-value';
 
 const SIZE_UNITS: Record<string, number> = {
   B: 1,
@@ -17,12 +18,12 @@ function parseSize(input: string): number {
 
 /**
  * Client-side file size validation reads from the File API.
- * The `value` parameter is ignored; pass the input element's files via options.__files.
+ * Reads the files from the field value (`File[]`), or from `options.__files` for custom fields.
  */
 export const fileSize: Validator = {
   type: 'FileSize',
-  validate(_value: string, options: Record<string, unknown>): ValidatorResult {
-    const files = options['__files'] as FileList | undefined;
+  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const files = isFileValue(value) ? value : (options['__files'] as ArrayLike<File> | undefined);
     if (!files || files.length === 0) {
       return { valid: true, message: '' };
     }

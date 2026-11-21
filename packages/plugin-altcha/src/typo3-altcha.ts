@@ -1,4 +1,4 @@
-import { AltchaFieldBase } from './altcha-field-base';
+import { createAltchaField, findAltchaWidget } from './altcha-field-base';
 
 /**
  * TYPO3-specific ALTCHA field for the `bbysaeth/typo3-altcha` extension.
@@ -7,16 +7,16 @@ import { AltchaFieldBase } from './altcha-field-base';
  * `tx_form_formframework[form-1][field-id]` plus optional `<altcha-widget>`.
  * The verified payload is synced into that hidden input for form submission.
  */
-export default class Typo3AltchaField extends AltchaFieldBase {
-  protected resolveChallenge(): string | null {
-    const widget = this.findAltchaWidget();
-    const fromWidget = widget?.getAttribute('challenge');
-    if (fromWidget) return fromWidget;
+const Typo3AltchaField = createAltchaField(({ wrapper, hiddenInput }) => {
+  const name = wrapper.getAttribute('data-form-field') ?? '';
+  const fromWidget = findAltchaWidget(wrapper, name)?.getAttribute('challenge');
+  if (fromWidget) return fromWidget;
 
-    return (
-      this.wrapper.getAttribute('data-altcha-challenge')
-      ?? this.hiddenInput.getAttribute('data-altcha-challenge')
-      ?? this.wrapper.getAttribute('data-altcha-challenge-url')
-    );
-  }
-}
+  return (
+    wrapper.getAttribute('data-altcha-challenge')
+    ?? hiddenInput.getAttribute('data-altcha-challenge')
+    ?? wrapper.getAttribute('data-altcha-challenge-url')
+  );
+});
+
+export default Typo3AltchaField;

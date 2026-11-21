@@ -199,7 +199,7 @@ describe('radio and checkbox groups', () => {
     const second = form.querySelector<HTMLInputElement>('#i2')!;
     second.checked = true;
     second.dispatchEvent(new Event('change'));
-    expect(ctrl.getField('interests')?.value).toBe('code');
+    expect(ctrl.getField('interests')?.value).toEqual(['code']);
     ctrl.destroy();
   });
 

@@ -1,5 +1,5 @@
 import type { FormField, FormFieldClass, FormFieldFactory } from './types';
-import { FieldController } from './field-controller';
+import { NativeField } from './native-field';
 import type { FieldOptions } from './field-options';
 import { isLazyFactory, finalizeField } from './create-field';
 
@@ -19,7 +19,7 @@ export interface InitFieldOptions extends FieldOptions {
  * for custom field types.
  *
  * ```ts
- * // Default FieldController
+ * // Default NativeField
  * const field = initField(wrapper);
  *
  * // Custom FormField implementation
@@ -37,7 +37,7 @@ export function initField(element: HTMLElement, options?: InitFieldOptions): For
     return finalizeField(new FieldClass(wrapper, fieldOptions));
   }
 
-  return new FieldController(wrapper, fieldOptions);
+  return new NativeField(wrapper, fieldOptions);
 }
 
 /**

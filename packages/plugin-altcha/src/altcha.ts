@@ -1,4 +1,12 @@
-import { AltchaFieldBase } from './altcha-field-base';
+import { createAltchaField } from './altcha-field-base';
+
+function parseMaybeJson(value: string): string | object {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
 
 /**
  * Generic ALTCHA field for custom backends.
@@ -10,31 +18,17 @@ import { AltchaFieldBase } from './altcha-field-base';
  *     <!-- Optional: data-altcha-challenge-url="https://..." -->
  *   </div>
  */
-export default class AltchaField extends AltchaFieldBase {
-  protected resolveChallenge(): string | object | null {
-    const jsonAttr = this.wrapper.getAttribute('data-altcha-challenge');
-    if (jsonAttr) {
-      try {
-        return JSON.parse(jsonAttr);
-      } catch {
-        return jsonAttr;
-      }
-    }
+const AltchaField = createAltchaField(({ wrapper }) => {
+  const jsonAttr = wrapper.getAttribute('data-altcha-challenge');
+  if (jsonAttr) return parseMaybeJson(jsonAttr);
 
-    const urlAttr = this.wrapper.getAttribute('data-altcha-challenge-url');
-    if (urlAttr) return urlAttr;
+  const urlAttr = wrapper.getAttribute('data-altcha-challenge-url');
+  if (urlAttr) return urlAttr;
 
-    const hiddenInput = this.wrapper.querySelector<HTMLInputElement>(
-      'input[type="hidden"][name$="[challenge]"]',
-    );
-    if (hiddenInput?.value) {
-      try {
-        return JSON.parse(hiddenInput.value);
-      } catch {
-        return hiddenInput.value;
-      }
-    }
+  const challengeInput = wrapper.querySelector<HTMLInputElement>('input[type="hidden"][name$="[challenge]"]');
+  if (challengeInput?.value) return parseMaybeJson(challengeInput.value);
 
-    return null;
-  }
-}
+  return null;
+});
+
+export default AltchaField;

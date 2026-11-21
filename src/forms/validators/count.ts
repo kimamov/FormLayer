@@ -1,13 +1,14 @@
-import type { Validator, ValidatorResult } from '../types';
+import type { FieldValue, Validator, ValidatorResult } from '../types';
 
 /**
  * TYPO3 `Count`: number of selected values (checkbox groups, multi-selects).
- * The field value is the comma-joined list of selected values.
+ * Array values are counted directly; a string is treated as a comma-joined list
+ * (custom fields that report their selection as one string).
  */
 export const count: Validator = {
   type: 'Count',
-  validate(value: string, options: Record<string, unknown>): ValidatorResult {
-    const selected = value.split(',').filter((v) => v !== '').length;
+  validate(value: FieldValue, options: Record<string, unknown>): ValidatorResult {
+    const selected = Array.isArray(value) ? value.length : value.split(',').filter((v) => v !== '').length;
     const min = Number(options['minimum'] ?? 0);
     const max = Number(options['maximum'] ?? Infinity);
     const customMsg = options.message as string | undefined;
