@@ -67,11 +67,19 @@ export interface FormField {
   focus(): void;
   /** Names of fields this field's rules depend on (`options.field` / `options.fields`). */
   readonly dependencies?: readonly string[];
+  /** True if some rule can only be checked by the server (`"server": true` or no client validator). */
+  readonly hasServerRules?: boolean;
+  /** Mark the field as waiting for a server check (sets `isValidating`). */
+  setValidating?(validating: boolean): void;
 }
 
 /** What a form shares with its fields. */
 export interface FieldFormContext {
   getValue(name: string): FieldValue | undefined;
+  /** `false` when the form validates on the server only: fields skip their client rules. */
+  readonly clientRules?: boolean;
+  /** Called after a field ran its rules because of user interaction or `setValue()`. */
+  validated?(name: string, result: FieldValidationResult): void;
 }
 
 /**
