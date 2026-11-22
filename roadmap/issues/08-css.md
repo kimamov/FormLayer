@@ -16,16 +16,18 @@ CSS class names are also a fixed constant (`CSS_CLASSES`).
 
 ## Scope
 
-- [ ] `formlayer/base.css`: state styles only (invalid/valid, error message, loading submitter, disabled field), wrapped in `:where()` for zero specificity, with `--fl-*` variables that have fallbacks.
-- [ ] Optional `formlayer/theme.css` for the demo look. It doesn't depend on any host-page variables.
-- [ ] Remove the global `*`, `form[id]` and `.btn` rules.
-- [ ] Fix invalid-state specificity: today `[data-form-field] input:not(…)` beats `input.is-invalid`, so invalid text inputs never get the error border (found in the playground).
-- [ ] Move the combobox and ALTCHA styles into `formlayer-plugin-combobox/style.css` and `formlayer-plugin-altcha/style.css`.
-- [ ] Configurable class names: `classes: { invalid, errorMessage, … }` in the form or registry options, defaulting to the current Bootstrap-compatible names.
-- [ ] `base.css` includes `[data-form-field][hidden], [data-client-variants][hidden] { display: none !important; }`, so layout rules can't override `hidden`.
-- [ ] **One polite live region per page** announces errors that appear on blur or change, with a short delay so it doesn't talk over the next field's label. It is cleared when the error is fixed (C5).
-- [ ] Optional accessible error summary: focusable, with a list of links to the invalid fields and a live region announcing the error count.
-- [ ] Keep the `forms.css` export for one minor version as an alias that warns in docs.
+- [x] `formlayer/base.css`: state styles only (invalid/valid, error message, loading submitter, disabled field), wrapped in `:where()` for zero specificity, with `--fl-*` variables that have fallbacks.
+- [x] Optional `formlayer/theme.css` for the demo look. It doesn't depend on any host-page variables.
+- [x] Remove the global `*`, `form[id]` and `.btn` rules.
+- [x] Fix invalid-state specificity: today `[data-form-field] input:not(…)` beats `input.is-invalid`, so invalid text inputs never get the error border (found in the playground).
+- [x] Move the combobox and ALTCHA styles into `formlayer-plugin-combobox/style.css` and `formlayer-plugin-altcha/style.css`.
+- [x] Configurable class names: `classes: { invalid, errorMessage, … }` in the form or registry options, defaulting to the current Bootstrap-compatible names.
+- [x] `base.css` includes `[data-form-field][hidden], [data-client-variants][hidden] { display: none !important; }`, so layout rules can't override `hidden`.
+- [x] **One polite live region per page** announces errors that appear on blur or change, with a short delay so it doesn't talk over the next field's label. It is cleared when the error is fixed (C5).
+- [x] Optional accessible error summary: focusable, with a list of links to the invalid fields. It is focused after a failed submit, so its heading and list are read; no extra live region is needed.
+- [x] Keep the `forms.css` export for one minor version as an alias that warns in docs.
+
+Found while doing this: an error that appears on blur shifted the Back button away under the pointer, so its click was lost (M3). Blur validation now waits while a submit button of the form is pressed.
 
 ## Acceptance criteria
 

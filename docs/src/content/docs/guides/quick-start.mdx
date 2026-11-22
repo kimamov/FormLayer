@@ -111,6 +111,15 @@ FormLayer uses these CSS classes by default:
 | `is-invalid` | Input element + field wrapper | Field has validation errors |
 | `invalid-feedback` | Error container | Expected class for the error element |
 
+Change them with the `classes` option, and import the styles you want:
+
+```typescript
+import 'formlayer/base.css';  // invalid, hidden and loading states
+import 'formlayer/theme.css'; // optional look for inputs and groups
+```
+
+Both use zero-specificity selectors and `--fl-*` variables, so your own CSS always wins. See [Error Rendering](/guides/error-rendering/#styles).
+
 ## Error Element Resolution
 
 FormLayer finds the error container for each field using this priority:

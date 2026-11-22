@@ -13,7 +13,7 @@ npm install formlayer formlayer-plugin-client-variants
 ```typescript
 import { formRegistry, registerDefaultValidators } from 'formlayer';
 import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
 
 registerDefaultValidators();
 registerClientVariantsPlugin();

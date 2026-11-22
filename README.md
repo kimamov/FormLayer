@@ -36,7 +36,8 @@ npm install formlayer-plugin-altcha       # ALTCHA captcha
 
 ```typescript
 import { formRegistry, registerDefaultValidators } from 'formlayer';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
+import 'formlayer/theme.css'; // optional look
 
 registerDefaultValidators();
 
@@ -71,7 +72,9 @@ initTypo3Forms();
 | `formlayer` | Core API: registry, validators, `initField`, types |
 | `formlayer/typo3` | TYPO3 EXT:form integration |
 | `formlayer/validators` | Direct access to `runValidators` |
-| `formlayer/forms.css` | Default field/error styles |
+| `formlayer/base.css` | Field states (invalid, hidden, loading), zero specificity |
+| `formlayer/theme.css` | Optional look for inputs and groups |
+| `formlayer/forms.css` | Deprecated: imports `base.css` and `theme.css` |
 
 ## Related packages
 

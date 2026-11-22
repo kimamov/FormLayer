@@ -1,5 +1,6 @@
 import './style.css';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
+import 'formlayer/theme.css';
 
 import { initTypo3Forms } from 'formlayer/typo3';
 import { registerComboboxPlugin } from 'formlayer-plugin-combobox';

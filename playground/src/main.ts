@@ -5,7 +5,9 @@
 import { initTypo3Forms } from 'formlayer/typo3';
 import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
 import { registerClientVariantsPlugin } from 'formlayer-plugin-client-variants';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
+import 'formlayer/theme.css';
+import 'formlayer-plugin-combobox/style.css';
 import './playground.css';
 import { mountDebugPanel } from './debug-panel';
 
