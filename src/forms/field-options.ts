@@ -23,6 +23,17 @@ export interface FieldOptions {
   validators?: Validator[];
   /** Translations for validator message keys (see `setValidationMessages()`). */
   messages?: ValidationMessages;
+  /**
+   * Class names FormLayer toggles. Defaults match Bootstrap: `is-invalid` on the
+   * wrapper and controls, `.invalid-feedback` as the error container.
+   * `base.css` styles states by `aria-invalid`, so it works with any names.
+   */
+  classes?: { invalid?: string; errorMessage?: string };
+  /**
+   * Announce an error that appears when the user leaves or changes a field,
+   * through one polite live region per page. Default `true`.
+   */
+  announceErrors?: boolean;
   validate?: (
     value: FieldValue,
     rules: ValidatorRule[],

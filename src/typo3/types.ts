@@ -16,6 +16,8 @@ export interface Typo3FormsOptions {
   additionalValidators?: Validator[];
   /** Translations for validator message keys, e.g. rendered from TYPO3 XLIFF as JSON. */
   validationMessages?: ValidationMessages;
+  /** Class names FormLayer toggles on fields (default Bootstrap: `is-invalid`, `invalid-feedback`). */
+  classes?: { invalid?: string; errorMessage?: string };
   /**
    * Server validation while the user fills in the form. Uses the TYPO3
    * transport (`createTypo3ServerValidation()`) unless you pass your own

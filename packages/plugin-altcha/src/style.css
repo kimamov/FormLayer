@@ -1,0 +1,13 @@
+/*
+ * formlayer-plugin-altcha styles. Import with:
+ *   import 'formlayer-plugin-altcha/style.css';
+ */
+
+:where(.altcha-container) {
+  --altcha-max-width: 100%;
+}
+
+:where(.altcha-container altcha-widget) {
+  font-size: inherit;
+  line-height: inherit;
+}

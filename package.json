@@ -41,6 +41,16 @@
       "style": "./dist/forms/forms.css",
       "import": "./dist/forms/forms.css",
       "default": "./dist/forms/forms.css"
+    },
+    "./base.css": {
+      "style": "./dist/forms/base.css",
+      "import": "./dist/forms/base.css",
+      "default": "./dist/forms/base.css"
+    },
+    "./theme.css": {
+      "style": "./dist/forms/theme.css",
+      "import": "./dist/forms/theme.css",
+      "default": "./dist/forms/theme.css"
     }
   },
   "files": [

@@ -1,18 +1,15 @@
 /*
- * Playground styles. `formlayer/forms.css` depends on variables it never
- * defines (see roadmap milestone 7), so they are defined here.
+ * Playground page styles. Form styling comes from `formlayer/base.css`,
+ * `formlayer/theme.css` and the combobox plugin's `style.css`.
  */
 :root {
   color-scheme: light dark;
-  --bg: Canvas;
   --text: color-mix(in srgb, CanvasText 70%, Canvas);
-  --text-h: CanvasText;
   --border: #767676;
   --accent: #0b57d0;
-  --accent-bg: color-mix(in srgb, #0b57d0 15%, Canvas);
-  --accent-border: #0b57d0;
   --code-bg: color-mix(in srgb, CanvasText 6%, Canvas);
-  --shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  --success: #137333;
+  --fl-accent: var(--accent);
   font-family: system-ui, sans-serif;
   line-height: 1.5;
 }
@@ -27,11 +24,6 @@ main {
   max-inline-size: 40rem;
   margin-inline: auto;
   padding: 1.5rem 1rem 6rem;
-}
-
-/* The `hidden` attribute must win over layout rules (conditional fields). */
-[hidden] {
-  display: none !important;
 }
 
 .field {
@@ -113,7 +105,7 @@ button[data-loading] {
 }
 
 .form-errors {
-  border: 2px solid var(--form-error);
+  border: 2px solid var(--fl-error);
   padding: 0.75rem 1rem;
   margin-block-end: 1.5rem;
 }
@@ -142,7 +134,7 @@ button[data-loading] {
 }
 
 .confirmation {
-  border: 2px solid var(--form-success);
+  border: 2px solid var(--success);
   padding: 1rem;
 }
 

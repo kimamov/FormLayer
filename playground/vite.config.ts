@@ -16,7 +16,8 @@ export default defineConfig({
     alias: [
       { find: /^formlayer$/, replacement: r('src/index.ts') },
       { find: /^formlayer\/typo3$/, replacement: r('src/typo3/index.ts') },
-      { find: /^formlayer\/forms\.css$/, replacement: r('src/forms/forms.css') },
+      { find: /^formlayer\/(base|theme|forms)\.css$/, replacement: r('src/forms/$1.css') },
+      { find: /^formlayer-plugin-combobox\/style\.css$/, replacement: r('packages/plugin-combobox/src/style.css') },
       { find: /^formlayer-plugin-combobox$/, replacement: r('packages/plugin-combobox/src/index.ts') },
       { find: /^formlayer-plugin-client-variants$/, replacement: r('packages/plugin-client-variants/src/index.ts') },
     ],

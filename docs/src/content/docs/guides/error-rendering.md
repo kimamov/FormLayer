@@ -1,11 +1,78 @@
 ---
 title: Error Rendering
-description: Customize where field errors appear and how each message is rendered.
+description: Styles, where field errors appear, how they are announced, and the error summary.
 ---
 
 Validation decides **whether** a field failed. Error rendering controls **where** messages appear in the DOM and **how** they are formatted.
 
 FormLayer ships with sensible defaults (`#input-id-errors`, then `.invalid-feedback`), but you can point at a different container, wrap each message in custom markup, or take over rendering entirely.
+
+## Styles
+
+Two stylesheets, both optional:
+
+```typescript
+import 'formlayer/base.css';  // field states only: invalid, hidden, loading
+import 'formlayer/theme.css'; // optional look for inputs, selects, groups
+```
+
+- **`base.css`** styles states, not your design. It keys on the attributes FormLayer sets (`aria-invalid`, `hidden`, `data-loading`), so it works whatever class names you configure. It also makes `hidden` win over layout rules such as `.field { display: flex }`, which conditional fields need.
+- **`theme.css`** gives inputs, selects, textareas and groups inside `[data-form-field]` a neutral look. Skip it if your site already styles forms.
+
+Every rule is wrapped in `:where()`, so it has **zero specificity**: any rule of yours wins without `!important`. Colours come from variables you can set anywhere:
+
+```css
+:root {
+  --fl-error: #b3261e;   /* error text and borders */
+  --fl-error-bg: #fce8e6;
+  --fl-focus: #0b57d0;   /* focus outline */
+  --fl-accent: #0b57d0;  /* theme.css: checked controls */
+  --fl-radius: 0.375rem; /* theme.css */
+  --fl-border: #767676;  /* theme.css */
+}
+```
+
+Dark mode values are built in. Plugins ship their own styles, so you import only what you use:
+
+```typescript
+import 'formlayer-plugin-combobox/style.css';
+import 'formlayer-plugin-altcha/style.css';
+```
+
+`formlayer/forms.css` still works. It now imports `base.css` and `theme.css` and is **deprecated**: import those two instead, plus the plugin styles you need, because `forms.css` no longer contains combobox or ALTCHA styles.
+
+## Class names
+
+FormLayer toggles Bootstrap's classes by default: `is-invalid` on invalid controls and wrappers, and `invalid-feedback` to find the error container. Use other names with `classes`:
+
+```typescript
+formRegistry.init({
+  submitFn,
+  controllerOptions: { classes: { invalid: 'has-error', errorMessage: 'field-error' } },
+});
+
+// TYPO3
+initTypo3Forms({ classes: { invalid: 'has-error', errorMessage: 'field-error' } });
+```
+
+`aria-invalid` is always set, so `base.css` works with any class names.
+
+## Announcements
+
+An error that appears when the user **leaves or changes** a field is announced through one polite live region per page (`[data-fl-live-region]`, created on first use). The announcement waits half a second so it doesn't talk over the screen reader reading the next field, reads as "Email: Enter a valid email address.", and is cleared once the field is fixed. Nothing is announced while typing.
+
+After a failed **submit** nothing is announced: focus moves to the first problem (or the error summary), which reads its error.
+
+Don't put `role="alert"` or `aria-live` on error containers. The live region already announces errors, and both together read every error twice. Turn announcements off with `fieldOptions: { announceErrors: false }`. Custom fields can use the same region:
+
+```typescript
+import { announce, clearAnnouncement } from 'formlayer';
+
+announce('3 results available', this);
+clearAnnouncement(this); // only clears what `this` announced
+```
+
+While the user presses a submit button, blur validation waits until the click. Otherwise an error appearing on blur could push the button down before the click lands. The submit validates anyway, and a `formnovalidate` button (Back) skips it.
 
 ## Default behavior
 
@@ -30,7 +97,7 @@ For each field, FormLayer:
      data-validate='[{"type":"NotEmpty"},{"type":"EmailAddress"}]'>
   <label for="email">Email</label>
   <input id="email" type="email" name="email" />
-  <div id="email-errors" class="invalid-feedback" role="alert"></div>
+  <div id="email-errors" class="invalid-feedback"></div>
 </div>
 ```
 
@@ -43,7 +110,7 @@ Use `errorsSelector` when your markup uses a different class or places the conta
      data-validate='[{"type":"NotEmpty"}]'>
   <label for="username">Username</label>
   <!-- Errors above the input -->
-  <ul class="field-errors" role="alert" aria-live="polite"></ul>
+  <ul class="field-errors"></ul>
   <input id="username" type="text" name="username" />
 </div>
 ```
@@ -106,7 +173,7 @@ formRegistry.init({
     fieldOptions: {
       renderError({ message, index }, field) {
         return `
-          <span class="field-error" id="${field.name}-error-${index}" role="alert">
+          <span class="field-error" id="${field.name}-error-${index}">
             ${ERROR_ICON}
             <span class="field-error__text">${escapeHtml(message)}</span>
           </span>`;
@@ -195,31 +262,32 @@ const ctrl = initField(myElement, {
 
 See [Standalone Fields](/guides/standalone-fields/) for other field-level hooks.
 
-## Form-level error summary
+## Error summary
 
-Field options control **per-field** containers. For a **form-wide** summary (banner, toast, error count), listen to `form:invalid` or pass `onFormInvalid` when registering the form.
+For long forms, add an empty error summary at the top of the form. After a failed submit FormLayer fills it with a heading and a link to each problem, and focuses it instead of the first field:
 
 ```html
-<form id="contact">
-  <div id="form-summary" class="form-summary" hidden role="alert"></div>
+<form>
+  <div data-fl-error-summary data-fl-error-summary-title="There is a problem"></div>
   <!-- fields … -->
 </form>
 ```
 
+- Each link jumps to its field and focuses it. Form-level errors are listed too.
+- The list follows the user's fixes and empties (and hides) once everything is valid.
+- `data-fl-error-summary-title` sets the heading (default "There is a problem").
+
+Without a summary, focus moves to the first invalid field, which is the better choice for short forms.
+
+## Your own summary
+
+For a banner, toast or error count, listen to `form:invalid` or pass `onFormInvalid` when registering the form:
+
 ```typescript
 formRegistry.register(formEl, submitFn, {
   onFormInvalid({ state }) {
-    const summary = document.getElementById('form-summary')!;
-    const messages = Object.values(state.fields).flatMap((field) => field.errors);
-
-    if (messages.length === 0) {
-      summary.hidden = true;
-      summary.textContent = '';
-      return;
-    }
-
-    summary.hidden = false;
-    summary.textContent = messages.join(' ');
+    const count = Object.values(state.fields).filter((field) => !field.isValid).length;
+    document.getElementById('submit-hint')!.textContent = `${count} fields need attention.`;
   },
 });
 ```
@@ -270,6 +338,9 @@ formRegistry.init({
 | `renderError` | Field | HTML for a single error message |
 | `errorsSeparator` | Field | Joiner between rendered messages (default `<br/>`) |
 | `renderErrors` | Field | Full override for writing errors to the DOM |
+| `announceErrors` | Field | Announce errors that appear on blur/change (default `true`) |
+| `classes` | Form | `invalid` and `errorMessage` class names (default Bootstrap) |
+| `data-fl-error-summary` | Form | Error summary filled and focused after a failed submit |
 | `onFormInvalid` | Form | Callback when validation fails (client or server) |
 | `form:invalid` | Form | Event with full `FormState` |
 

@@ -13,7 +13,7 @@ npm install formlayer formlayer-plugin-datepicker
 ```typescript
 import { formRegistry, registerDefaultValidators } from 'formlayer';
 import { registerDatepickerPlugin } from 'formlayer-plugin-datepicker';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
 
 registerDefaultValidators();
 registerDatepickerPlugin();

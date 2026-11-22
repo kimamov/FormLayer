@@ -42,6 +42,7 @@ export type { FieldAdapter, FieldContext, FormControl } from './forms/base-field
 export { NativeField } from './forms/native-field';
 export { FieldController } from './forms/field-controller';
 export { html, raw, escapeHtml } from './forms/html';
+export { announce, clearAnnouncement } from './forms/announcer';
 export type { HtmlValue } from './forms/html';
 export { valueToString, valueToList, isEmptyValue, isFileValue } from './forms/field-value';
 export type { FieldValue } from './forms/field-value';

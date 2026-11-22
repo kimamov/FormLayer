@@ -17,6 +17,8 @@ export interface FieldErrorPresenterOptions<THost = unknown> {
   errorsSeparator?: string;
   /** Replace the entire error rendering step. When set, renderError and errorsSeparator are ignored. */
   renderErrors?: (errors: string[], field: THost) => void;
+  /** Class names to toggle; default `is-invalid` and `invalid-feedback`. */
+  classes?: { invalid?: string; errorMessage?: string };
 }
 
 /**
@@ -49,10 +51,11 @@ export class FieldErrorPresenter<THost = unknown> {
 
   update(isValid: boolean, errors: string[]): void {
     const targets = this.getTargets();
-    this.wrapper.classList.toggle(CSS_CLASSES.errorClass, !isValid);
+    const invalidClass = this.options.classes?.invalid ?? CSS_CLASSES.errorClass;
+    this.wrapper.classList.toggle(invalidClass, !isValid);
 
     for (const input of targets) {
-      input.classList.toggle(CSS_CLASSES.errorClass, !isValid);
+      input.classList.toggle(invalidClass, !isValid);
       input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
       if (isValid) {
         this.removeErrorsFromDescribedBy(input);
@@ -104,7 +107,7 @@ export class FieldErrorPresenter<THost = unknown> {
       if (el) return el;
     }
 
-    return this.wrapper.querySelector(`.${CSS_CLASSES.errorMsgClass}`);
+    return this.wrapper.querySelector(`.${this.options.classes?.errorMessage ?? CSS_CLASSES.errorMsgClass}`);
   }
 
   private addErrorsToDescribedBy(input: HTMLElement): void {

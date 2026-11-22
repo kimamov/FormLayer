@@ -44,6 +44,7 @@ export function initTypo3Forms(options?: Typo3FormsOptions): Typo3FormsApi {
     ...(options?.fieldsMap ? { fieldsMap: options.fieldsMap } : {}),
     ...(options?.validationMessages ? { messages: options.validationMessages } : {}),
     ...(serverValidation ? { serverValidation } : {}),
+    ...(options?.classes ? { classes: options.classes } : {}),
   };
   const hasControllerOptions = Object.keys(controllerOptions).length > 0;
 

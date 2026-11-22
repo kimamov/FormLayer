@@ -1,0 +1,91 @@
+/*
+ * Optional FormLayer theme: a simple, readable look for fields. Import it
+ * after base.css. All rules are wrapped in :where() (zero specificity) and
+ * scoped to [data-form-field], and every colour is a --fl-* variable with a
+ * fallback: the theme never touches buttons, layout or other page elements,
+ * and never depends on the host page's variables.
+ */
+
+:where(:root) {
+  --fl-radius: 6px;
+  --fl-border: #767676;
+  --fl-text: CanvasText;
+  --fl-muted: color-mix(in srgb, CanvasText 70%, Canvas);
+  --fl-input-bg: Canvas;
+  --fl-disabled-bg: color-mix(in srgb, CanvasText 6%, Canvas);
+  --fl-accent: #0b57d0;
+  --fl-transition: 0.15s ease;
+}
+
+:where([data-form-field]) {
+  margin-block-end: 1.25rem;
+}
+
+:where([data-form-field] > label, [data-form-field] legend) {
+  display: block;
+  margin-block-end: 0.375rem;
+  font-weight: 500;
+  color: var(--fl-text, CanvasText);
+}
+
+:where([data-form-field]) :where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]), select, textarea) {
+  box-sizing: border-box;
+  display: block;
+  inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  font-size: max(1rem, 1em);
+  line-height: 1.5;
+  color: var(--fl-text, CanvasText);
+  background: var(--fl-input-bg, Canvas);
+  border: 1px solid var(--fl-border, #767676);
+  border-radius: var(--fl-radius, 6px);
+  transition: border-color var(--fl-transition, 0.15s ease), box-shadow var(--fl-transition, 0.15s ease);
+}
+
+:where([data-form-field]) :where(textarea) {
+  min-block-size: 6rem;
+  resize: vertical;
+}
+
+:where([data-form-field]) :where(input, select, textarea):focus-visible {
+  outline: 3px solid var(--fl-accent, #0b57d0);
+  outline-offset: 2px;
+}
+
+:where([data-form-field]) :where(input, select, textarea):disabled {
+  background: var(--fl-disabled-bg, #f1f1f1);
+  opacity: 0.7;
+}
+
+:where([data-form-field]) :where(input[type="checkbox"], input[type="radio"]) {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+  accent-color: var(--fl-accent, #0b57d0);
+}
+
+:where([data-form-field] fieldset, fieldset[data-form-field]) {
+  border: 1px solid var(--fl-border, #767676);
+  border-radius: var(--fl-radius, 6px);
+  padding: 1rem 1.25rem;
+  margin-inline: 0;
+}
+
+:where([data-form-field] .form-text, [data-form-field] .hint) {
+  display: block;
+  margin-block-start: 0.25rem;
+  font-size: 0.875em;
+  color: var(--fl-muted, #555);
+}
+
+/* Repeat the invalid state after the theme's own border, so it wins at equal specificity. */
+:where([data-form-field]) :where(input, select, textarea, [role="combobox"])[aria-invalid="true"] {
+  border-color: var(--fl-error, #b3261e);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-form-field]) :where(input, select, textarea) {
+    transition: none;
+  }
+}

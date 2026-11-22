@@ -74,6 +74,8 @@ export interface FormControllerOptions {
   serverValidation?: ServerValidationOptions;
   /** Translations for validator message keys in this form (see `setValidationMessages()`). */
   messages?: ValidationMessages;
+  /** Class names FormLayer toggles on fields (default Bootstrap: `is-invalid`, `invalid-feedback`). */
+  classes?: { invalid?: string; errorMessage?: string };
 }
 
 const FORM_ERRORS_SELECTOR = '[data-fl-form-errors]';
@@ -122,6 +124,7 @@ export class FormController implements FormControllerApi, FormPluginHost {
       ...options?.fieldOptions,
       validators: [...(options?.validators ?? []), ...(options?.fieldOptions?.validators ?? [])],
       messages: options?.fieldOptions?.messages ?? options?.messages,
+      classes: options?.fieldOptions?.classes ?? options?.classes,
     };
     this.formRules = this.parseFormRules();
     this.serverMode = resolveServerValidationMode(formEl, options?.serverValidation);
@@ -221,13 +224,60 @@ export class FormController implements FormControllerApi, FormPluginHost {
     }
     this.emit(isValid ? 'form:valid' : 'form:invalid', detail);
 
-    if (firstInvalid) {
+    const summary = this.renderErrorSummary(!isValid);
+    if (summary) {
+      summary.focus();
+    } else if (firstInvalid) {
       firstInvalid.focus();
     } else if (this.formErrors.length > 0) {
       this.formErrorsElement()?.focus();
     }
 
     return isValid;
+  }
+
+  /**
+   * Fill `[data-fl-error-summary]` (if the form has one) with a heading and a
+   * link to each problem. Returns the summary when it shows errors.
+   */
+  private renderErrorSummary(show: boolean): HTMLElement | null {
+    const summary = this.formEl.querySelector<HTMLElement>('[data-fl-error-summary]');
+    if (!summary) return null;
+
+    const items: string[] = [];
+    if (show) {
+      for (const field of this.fields.values()) {
+        const state = field.getState();
+        if (state.isValid || state.errors.length === 0) continue;
+        const control = (field as { inputElement?: HTMLElement }).inputElement;
+        const label = (control as HTMLInputElement | undefined)?.labels?.[0]?.textContent?.replace(/\s+/g, ' ').trim()
+          ?? field.name;
+        const text = `${label.replace(/\s*\*$/, '')}: ${state.errors[0]}`;
+        items.push(control?.id
+          ? `<li><a href="#${escapeHtml(control.id)}" data-fl-summary-field="${escapeHtml(field.name)}">${escapeHtml(text)}</a></li>`
+          : `<li>${escapeHtml(text)}</li>`);
+      }
+      for (const message of this.formErrors) items.push(`<li>${escapeHtml(message)}</li>`);
+    }
+
+    if (items.length === 0) {
+      summary.innerHTML = '';
+      return null;
+    }
+
+    const title = summary.getAttribute('data-fl-error-summary-title') ?? 'There is a problem';
+    summary.setAttribute('tabindex', '-1');
+    summary.innerHTML = `<h2>${escapeHtml(title)}</h2><ul>${items.join('')}</ul>`;
+    if (!summary.dataset.flSummaryBound) {
+      summary.dataset.flSummaryBound = '';
+      summary.addEventListener('click', (event) => {
+        const link = (event.target as Element).closest<HTMLAnchorElement>('a[data-fl-summary-field]');
+        if (!link) return;
+        event.preventDefault();
+        this.fields.get(link.dataset.flSummaryField ?? '')?.focus();
+      }, { signal: this.abortController.signal });
+    }
+    return summary;
   }
 
   reset(): void {
@@ -448,6 +498,10 @@ export class FormController implements FormControllerApi, FormPluginHost {
 
     // Form-level errors clear as soon as the user fixes them.
     if (this.formErrors.length > 0) void this.validateFormRules();
+
+    // A shown error summary follows the fixes.
+    const summary = this.formEl.querySelector<HTMLElement>('[data-fl-error-summary]');
+    if (summary && summary.childElementCount > 0) this.renderErrorSummary(true);
   }
 
   private emitFieldEvents(state: FieldState): void {

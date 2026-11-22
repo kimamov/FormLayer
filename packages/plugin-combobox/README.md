@@ -13,7 +13,8 @@ npm install formlayer formlayer-plugin-combobox
 ```typescript
 import { formRegistry, registerDefaultValidators } from 'formlayer';
 import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
-import 'formlayer/forms.css';
+import 'formlayer/base.css';
+import 'formlayer-plugin-combobox/style.css';
 
 registerDefaultValidators();
 registerComboboxPlugin();

@@ -15,6 +15,8 @@ import { FieldErrorPresenter } from './field-error-presenter';
 import { getValidator } from './validators/index';
 import { runRules, ruleDependencies, isServerOnlyRule, type ValidatorContext } from './validation';
 import { type FieldValue, isFileValue, valueKey } from './field-value';
+import { announce, clearAnnouncement, spokenText } from './announcer';
+import { afterRelease, pressedSubmitter, trackPressedSubmitter } from './pressed-submitter';
 
 export type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -102,6 +104,8 @@ export abstract class BaseField implements DomFormField {
   private validationRun = 0;
   private validationAbort: AbortController | null = null;
   private lastValidatedKey: string | null = null;
+  private announcedKey: string | null = null;
+  private heldForSubmitter = false;
   private readonly _dependencies: readonly string[];
   private readonly disabledByField = new Set<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>();
 
@@ -109,6 +113,7 @@ export abstract class BaseField implements DomFormField {
     this.wrapper = wrapper;
     this.name = wrapper.getAttribute('data-form-field') ?? '';
     this.options = options;
+    trackPressedSubmitter();
     this.rules = this.parseRules();
     this._dependencies = ruleDependencies(this.rules);
   }
@@ -221,7 +226,7 @@ export abstract class BaseField implements DomFormField {
     this.adapter.write(value);
     this._state.isDirty = true;
     this._state.isTouched = true;
-    void this.runValidation(true);
+    void this.runValidation(true, false);
     this.notifyChange();
   }
 
@@ -232,14 +237,14 @@ export abstract class BaseField implements DomFormField {
    * one, and stale results are ignored.
    */
   validate(): Promise<FieldValidationResult> {
-    return this.runValidation(false);
+    return this.runValidation(false, false);
   }
 
   /**
    * @param fromUser The run was caused by user interaction or `setValue()`: the
    *   form is told the result, so it can follow up (for example with a server check).
    */
-  private runValidation(fromUser: boolean): Promise<FieldValidationResult> {
+  private runValidation(fromUser: boolean, speak: boolean): Promise<FieldValidationResult> {
     this.validationAbort?.abort();
     this.validationAbort = null;
     const run = ++this.validationRun;
@@ -263,6 +268,7 @@ export abstract class BaseField implements DomFormField {
 
     const report = (result: FieldValidationResult): FieldValidationResult => {
       if (fromUser) this.form?.validated?.(this.name, result);
+      this.announceResult(result, speak);
       return result;
     };
 
@@ -408,6 +414,30 @@ export abstract class BaseField implements DomFormField {
     };
   }
 
+  /**
+   * Announce an error that newly appears after the user left or changed the
+   * field; clear our announcement once the field is valid again.
+   */
+  private announceResult(result: FieldValidationResult, speak: boolean): void {
+    if (result.isValid) {
+      this.announcedKey = null;
+      clearAnnouncement(this);
+      return;
+    }
+    if (!speak || this.options.announceErrors === false || typeof document === 'undefined') return;
+    const key = result.errors.join('\n');
+    if (key === this.announcedKey) return;
+    this.announcedKey = key;
+    const label = this.labelText();
+    announce(label ? `${label}: ${result.errors[0]}` : result.errors[0], this);
+  }
+
+  private labelText(): string {
+    const control = this.targets[0] as HTMLInputElement | undefined;
+    const label = control?.labels?.[0] ?? this.wrapper.querySelector('legend') ?? this.wrapper.querySelector('label');
+    return label ? spokenText(label) : '';
+  }
+
   private get showsErrors(): boolean {
     return !this._state.isValid && this._state.errors.length > 0;
   }
@@ -467,7 +497,7 @@ export abstract class BaseField implements DomFormField {
     this.clearDebounce();
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
-      if (this.trigger === 'change' || this.showsErrors) void this.runValidation(true);
+      if (this.trigger === 'change' || this.showsErrors) void this.runValidation(true, false);
       this.notifyChange();
     }, this.options.debounceMs ?? DEBOUNCE_MS);
   }
@@ -476,19 +506,46 @@ export abstract class BaseField implements DomFormField {
     this.clearDebounce();
     this._state.isDirty = true;
     this._state.isTouched = true;
-    if (this.trigger !== 'submit' || this.showsErrors) void this.runValidation(true);
+    if (this.holdForSubmitter()) {
+      this.notifyChange();
+      return;
+    }
+    if (this.trigger !== 'submit' || this.showsErrors) void this.runValidation(true, true);
     this.notifyChange();
   }
 
   private handleTouch(): void {
     this.clearDebounce();
     this._state.isTouched = true;
+    if (this.holdForSubmitter()) {
+      this.notifyChange();
+      return;
+    }
     const edited = this._state.isDirty || this.showsErrors;
     const unchanged = this.lastValidatedKey !== null && valueKey(this.adapter.read()) === this.lastValidatedKey;
     // Validate on leaving only if the user edited the field (web.dev timing guidance), and
     // not again if nothing changed since the last run (avoids duplicate async requests).
-    if (this.trigger !== 'submit' && edited && !unchanged) void this.runValidation(true);
+    if (this.trigger !== 'submit' && edited && !unchanged) void this.runValidation(true, true);
     this.notifyChange();
+  }
+
+  /**
+   * Leaving the field by pressing a submit button: an error shown now could shift
+   * the button away before the click lands. The submit validates anyway and a
+   * `formnovalidate` button (Back) must not, so hold back; if the click did not
+   * submit, validate once the button is released.
+   */
+  private holdForSubmitter(): boolean {
+    const submitter = pressedSubmitter(this.wrapper.closest('form'));
+    if (!submitter) return false;
+    if (!submitter.formNoValidate && !this.heldForSubmitter) {
+      this.heldForSubmitter = true;
+      afterRelease(() => {
+        this.heldForSubmitter = false;
+        if (this.wrapper.isConnected) this.handleTouch();
+      });
+    }
+    return true;
   }
 
   private clearDebounce(): void {

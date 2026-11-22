@@ -8,6 +8,11 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./style.css": {
+      "style": "./dist/style.css",
+      "import": "./dist/style.css",
+      "default": "./dist/style.css"
     }
   },
   "files": [
@@ -15,7 +20,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && node -e \"require('fs').copyFileSync('src/style.css','dist/style.css')\"",
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
@@ -29,5 +34,8 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ]
 }
