@@ -14,20 +14,22 @@ Part of the roadmap tracking issue. Depends on the field-core and validation iss
 
 ## Scope
 
-- [ ] Rebuild on `defineField`.
-- [ ] **Markup-first:** if the wrapper contains `[data-fl-part="listbox"]`, use the server-rendered `role="option"` / `role="group"` items as they are. Filter by toggling `hidden`, and match on each option's text (or `data-search`).
-- [ ] **Fallback:** generate the listbox from the `<select>`, including `<optgroup>` → `role="group"` with an accessible label. Keep `data-*` attributes from each `<option>` as `opt.data`.
-- [ ] Render hooks (`renderOption(opt, { html, escape })`, `renderGroup`, `renderEmpty`) using the core `html` helper. They are only used when there is no server listbox.
-- [ ] `filter(opt, query)` and `messages` (`noResults`, `toggle`) options.
-- [ ] Keyboard navigation skips group headers. Home/End/PageUp/PageDown work.
-- [ ] Fix:
+- [x] Rebuild on `defineField`.
+- [x] **Markup-first:** if the wrapper contains `[data-fl-part="listbox"]`, use the server-rendered `role="option"` / `role="group"` items as they are. Filter by toggling `hidden`, and match on each option's text (or `data-search`).
+- [x] **Fallback:** generate the listbox from the `<select>`, including `<optgroup>` → `role="group"` with an accessible label. Keep `data-*` attributes from each `<option>` as `opt.data`.
+- [x] Render hooks (`renderOption(opt, { html, escape })`, `renderGroup`, `renderEmpty`) using the core `html` helper. They are only used when there is no server listbox.
+- [x] `filter(opt, query)` and `messages` (`noResults`, `toggle`) options.
+- [x] Keyboard navigation skips group headers. Home/End/PageUp/PageDown work.
+- [x] Fix:
   - `aria-selected` is used for the highlighted option. Use a visual class plus `aria-activedescendant` instead.
   - The `<select>` id is not restored on destroy.
   - The empty placeholder option is filtered out.
   - Methods are private.
-- [ ] Combobox CSS moves into the plugin package (see the CSS issue).
-- [ ] Docs: a TYPO3 Fluid partial example for a country select with flags and continent groups.
-- [ ] Playwright tests: keyboard, screen-reader attributes, filtering with groups, the no-JS fallback.
+- [x] Combobox CSS moves into the plugin package (see the CSS issue).
+- [x] Docs: a TYPO3 Fluid partial example for a country select with flags and continent groups.
+- [x] Playwright tests: keyboard, screen-reader attributes, filtering with groups, the no-JS fallback.
+
+Also done: the default filter ignores accents and matches the label plus `data-search` terms; `data-combobox-no-results` / `data-combobox-toggle` set the messages from the CMS; "no results" is announced through the live region; Enter on a closed list submits the form again; options are re-read when the `<select>` changes (dependent selects); `combobox:open`, `combobox:close` and `combobox:select` events. Customisation goes through options and events instead of subclassing, so the private methods are no longer an obstacle.
 
 ## Acceptance criteria
 

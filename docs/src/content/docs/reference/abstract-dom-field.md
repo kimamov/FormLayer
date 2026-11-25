@@ -9,7 +9,7 @@ Write new fields with [`defineField()`](/reference/define-field/). `AbstractDomF
 
 `AbstractDomFormField` is the recommended base class for custom field types that replace or augment native controls. It implements the full [`DomFormField`](/reference/types/#domformfield) interface — the same contract as [`FieldController`](/reference/field-controller/), plus hooks for custom DOM and value synchronization.
 
-Built-in plugins such as [combobox](/guides/plugins/#combobox) and [datepicker](/guides/plugins/#datepicker) extend this class. For a step-by-step walkthrough, see [Creating Custom Fields](/guides/custom-fields/).
+The built-in plugins (combobox, datepicker, ALTCHA) are built with `defineField()`; the [combobox](/guides/combobox/) is the reference example. For a step-by-step walkthrough, see [Creating Custom Fields](/guides/custom-fields/).
 
 ## When to use it
 

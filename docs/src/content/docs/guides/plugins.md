@@ -49,36 +49,14 @@ The factory must return `{ default: FormFieldClass }`, matching the standard dyn
 
 ### Combobox
 
-Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-plugin-combobox):
+Requires [`formlayer-plugin-combobox`](https://www.npmjs.com/package/formlayer-plugin-combobox). It replaces a `<select>` with an accessible, searchable combobox that keeps `<optgroup>` groups, can use a listbox rendered by your CMS (flags, icons, anything), and offers render hooks for the generated one. See [Combobox](/guides/combobox/).
 
-```bash
-npm install formlayer-plugin-combobox
+```typescript
+import { registerComboboxPlugin } from 'formlayer-plugin-combobox';
+import 'formlayer-plugin-combobox/style.css';
+
+registerComboboxPlugin();
 ```
-
-Replaces a `<select>` with an accessible, searchable combobox (ARIA 1.2 pattern). The original `<select>` stays hidden and in sync for form submission. The hidden `<select>` holds the canonical value while the text input is the active control. (The combobox still uses the deprecated `AbstractDomFormField`; its rebuild on `defineField()` is tracked in #12.)
-
-```html
-<div data-form-field="country" data-field-type="combobox"
-     data-validate='[{"type":"NotEmpty","options":{"message":"Please select a country"}}]'>
-  <label for="country">Country</label>
-  <select id="country" name="country">
-    <option value="">Select...</option>
-    <option value="de">Germany</option>
-    <option value="at">Austria</option>
-    <option value="ch">Switzerland</option>
-    <option value="fr">France</option>
-    <option value="nl">Netherlands</option>
-  </select>
-  <div id="country-errors" class="invalid-feedback"></div>
-</div>
-```
-
-The combobox supports:
-
-- Type-ahead filtering
-- Keyboard navigation (arrow keys, Enter, Escape, Home, End)
-- ARIA labels and live regions
-- Blur commit (selects closest match or reverts)
 
 ### Datepicker
 

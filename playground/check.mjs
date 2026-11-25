@@ -602,6 +602,72 @@ const scenarios = [
         },
       },
       {
+        id: 'W7', roadmap: '07',
+        title: 'The combobox works with the keyboard: arrows skip group labels, Enter selects, the value is submitted',
+        async run(page) {
+          await page.focus('[data-form-field="country"] [role="combobox"]');
+          await page.keyboard.press('ArrowDown');
+          await page.keyboard.press('ArrowDown');
+          const active = await page.$eval('[role="combobox"]#country', (el) => document.getElementById(el.getAttribute('aria-activedescendant'))?.dataset.value);
+          await page.keyboard.press('Enter');
+          const state = await page.evaluate(() => ({
+            select: document.querySelector('[data-form-field="country"] select').value,
+            text: document.querySelector('#country').value,
+            expanded: document.querySelector('#country').getAttribute('aria-expanded'),
+          }));
+          const pass = active === 'DE' && state.select === 'DE' && state.text === 'Germany' && state.expanded === 'false';
+          return { pass, note: pass ? '' : JSON.stringify({ active, ...state }) };
+        },
+      },
+      {
+        id: 'W8', roadmap: '07',
+        title: 'Typing filters the combobox and hides groups without matches',
+        async run(page) {
+          await page.fill('#country', 'can');
+          await wait(100);
+          const visible = await page.$$eval('[role="listbox"]:not([hidden]) [role="option"]:not([hidden])', (els) => els.map((el) => el.dataset.value));
+          const groups = await page.$$eval('[role="listbox"]:not([hidden]) [role="group"]:not([hidden])', (els) => els.length);
+          const pass = visible.join() === 'CA' && groups === 1;
+          return { pass, note: pass ? '' : `visible ${visible.join()} in ${groups} groups` };
+        },
+      },
+      {
+        id: 'W9', roadmap: '07',
+        title: 'Without JavaScript the country field is a plain labelled <select> and the listbox stays hidden',
+        async run(page) {
+          const context = await page.context().browser().newContext({ javaScriptEnabled: false });
+          try {
+            const noJs = await context.newPage();
+            await noJs.goto(page.url());
+            const result = await noJs.evaluate(() => {
+              const select = document.querySelector('[data-form-field="country"] select');
+              return {
+                selectVisible: select.offsetParent !== null && select.labels.length > 0,
+                listboxHidden: document.querySelector('[data-fl-part="listbox"]').offsetParent === null,
+              };
+            });
+            const pass = result.selectVisible && result.listboxHidden;
+            return { pass, note: pass ? '' : JSON.stringify(result) };
+          } finally {
+            await context.close();
+          }
+        },
+      },
+      {
+        id: 'W10', roadmap: '07',
+        title: 'axe-core finds no WCAG 2.1 A/AA violations on the widgets page with the combobox open',
+        async run(page) {
+          await page.click('#country');
+          await page.keyboard.press('ArrowDown');
+          await page.addScriptTag({ path: require.resolve('axe-core') });
+          const violations = await page.evaluate(async () => {
+            const result = await window.axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] });
+            return result.violations.map((v) => `${v.id} (${v.nodes.length})`);
+          });
+          return { pass: violations.length === 0, note: violations.join(', ') };
+        },
+      },
+      {
         id: 'W5', roadmap: '—',
         title: '`FileSize` rejects a file larger than 1 MB',
         async run(page) {

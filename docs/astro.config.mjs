@@ -34,6 +34,7 @@ export default defineConfig({
 						{ label: 'Events & Hooks', slug: 'guides/events' },
 						{ label: 'Loading State', slug: 'guides/loading-state' },
 						{ label: 'Plugins', slug: 'guides/plugins' },
+						{ label: 'Combobox', slug: 'guides/combobox' },
 						{ label: 'Creating Custom Fields', slug: 'guides/custom-fields' },
 						{ label: 'Standalone Fields', slug: 'guides/standalone-fields' },
 					],
